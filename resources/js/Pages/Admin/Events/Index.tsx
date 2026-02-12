@@ -2,31 +2,22 @@ import AdminLayout from '@/Layouts/AdminLayout';
 import { Head, Link, router } from '@inertiajs/react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/Components/ui/card';
 import { Button } from '@/Components/ui/button';
-import { Badge } from '@/Components/ui/badge';
 import { Input } from '@/Components/ui/input';
+import { Badge } from '@/Components/ui/badge';
 import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/Components/ui/table';
-import {
-    DropdownMenu,
-    DropdownMenuContent,
-    DropdownMenuItem,
-    DropdownMenuTrigger,
-} from '@/Components/ui/dropdown-menu';
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from '@/Components/ui/select';
 import {
     Plus,
     Search,
-    MoreHorizontal,
-    Edit,
-    Eye,
+    Settings,
     Trash2,
-    Copy,
-    ExternalLink,
+    FileText,
+    Calendar,
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -36,18 +27,19 @@ interface Event {
     slug: string;
     status: 'draft' | 'active' | 'closed';
     locale: string;
+    form_count: number;
     response_count: number;
     event_date: string | null;
     created_at: string;
-    public_url: string;
 }
 
 interface Props {
     events: {
         data: Event[];
-        links: any;
         current_page: number;
         last_page: number;
+        per_page: number;
+        total: number;
     };
     filters: {
         search?: string;
@@ -69,166 +61,154 @@ const statusLabels = {
 
 export default function EventsIndex({ events, filters }: Props) {
     const [search, setSearch] = useState(filters.search || '');
+    const [status, setStatus] = useState(filters.status || '');
 
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault();
-        router.get(route('admin.events.index'), { search }, { preserveState: true });
+    const handleSearch = () => {
+        router.get(route('admin.events.index'), { search, status }, {
+            preserveState: true,
+        });
     };
 
-    const copyLink = (url: string) => {
-        navigator.clipboard.writeText(url);
-        // Could add toast notification here
-    };
-
-    const deleteEvent = (id: number) => {
-        if (confirm('Apakah Anda yakin ingin menghapus event ini?')) {
-            router.delete(route('admin.events.destroy', id));
+    const deleteEvent = (eventId: number) => {
+        if (confirm('Apakah Anda yakin ingin menghapus event ini? Semua form dan respons juga akan dihapus.')) {
+            router.delete(route('admin.events.destroy', eventId));
         }
     };
 
     return (
-        <AdminLayout header="Kelola Event">
-            <Head title="Kelola Event" />
+        <AdminLayout header="Daftar Event">
+            <Head title="Daftar Event" />
 
             <div className="space-y-6">
-                {/* Header Actions */}
+                {/* Header with actions */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                    <form onSubmit={handleSearch} className="flex gap-2 flex-1 max-w-md">
-                        <div className="relative flex-1">
-                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <div className="flex flex-1 gap-4">
+                        <div className="relative flex-1 max-w-sm">
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
                             <Input
-                                type="text"
                                 placeholder="Cari event..."
                                 value={search}
                                 onChange={(e) => setSearch(e.target.value)}
+                                onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
                                 className="pl-10"
                             />
                         </div>
-                        <Button type="submit" variant="outline">
-                            Cari
-                        </Button>
-                    </form>
+                        <Select value={status} onValueChange={(value) => {
+                            setStatus(value);
+                            router.get(route('admin.events.index'), { search, status: value }, {
+                                preserveState: true,
+                            });
+                        }}>
+                            <SelectTrigger className="w-40">
+                                <SelectValue placeholder="Semua Status" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                <SelectItem value="all">Semua Status</SelectItem>
+                                <SelectItem value="draft">Draft</SelectItem>
+                                <SelectItem value="active">Aktif</SelectItem>
+                                <SelectItem value="closed">Ditutup</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
 
                     <Link href={route('admin.events.create')}>
                         <Button className="bg-[#f17720] hover:bg-[#d96a1a]">
-                            <Plus className="h-4 w-4 mr-2" />
-                            Buat Event
+                            ➕ Buat Acara Baru
                         </Button>
                     </Link>
                 </div>
 
-                {/* Events Table */}
-                <Card>
-                    <CardContent className="p-0">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Nama Event</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead className="text-center">Respons</TableHead>
-                                    <TableHead>Tanggal Event</TableHead>
-                                    <TableHead>Dibuat</TableHead>
-                                    <TableHead className="text-right">Aksi</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {events.data.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={6} className="text-center py-8 text-gray-500">
-                                            Belum ada event. Buat event pertama Anda!
-                                        </TableCell>
-                                    </TableRow>
-                                ) : (
-                                    events.data.map((event) => (
-                                        <TableRow key={event.id}>
-                                            <TableCell>
-                                                <div>
-                                                    <Link
-                                                        href={route('admin.events.edit', event.id)}
-                                                        className="font-medium text-gray-900 hover:text-[#11224e]"
-                                                    >
-                                                        {event.title}
-                                                    </Link>
-                                                    <p className="text-sm text-gray-500">
-                                                        /{event.slug}
-                                                    </p>
-                                                </div>
-                                            </TableCell>
-                                            <TableCell>
+                {/* Events List */}
+                {events.data.length === 0 ? (
+                    <Card>
+                        <CardContent className="py-12 text-center">
+                            <Calendar className="h-12 w-12 mx-auto text-gray-400 mb-4" />
+                            <h3 className="text-lg font-medium text-gray-900 mb-2">
+                                Belum ada event
+                            </h3>
+                            <p className="text-gray-500 mb-4">
+                                Buat event pertama Anda untuk mulai mengumpulkan feedback
+                            </p>
+                            <Link href={route('admin.events.create')}>
+                                <Button className="bg-[#f17720] hover:bg-[#d96a1a]">
+                                    <Plus className="h-4 w-4 mr-2" />
+                                    Buat Event
+                                </Button>
+                            </Link>
+                        </CardContent>
+                    </Card>
+                ) : (
+                    <div className="grid gap-4">
+                        {events.data.map((event) => (
+                            <Card key={event.id}>
+                                <CardContent className="p-6">
+                                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                                        <div className="flex-1">
+                                            <div className="flex items-center gap-3 mb-2">
+                                                <h3 className="text-lg font-semibold">{event.title}</h3>
                                                 <Badge className={statusColors[event.status]}>
                                                     {statusLabels[event.status]}
                                                 </Badge>
-                                            </TableCell>
-                                            <TableCell className="text-center">
-                                                {event.response_count}
-                                            </TableCell>
-                                            <TableCell>
-                                                {event.event_date || '-'}
-                                            </TableCell>
-                                            <TableCell>
-                                                {event.created_at}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <Link href={route('admin.events.edit', event.id)}>
-                                                        <Button variant="ghost" size="sm" title="Edit">
-                                                            <Edit className="h-4 w-4" />
-                                                        </Button>
-                                                    </Link>
-                                                    <Link href={route('admin.events.responses', event.id)}>
-                                                        <Button variant="ghost" size="sm" title="Lihat Respons">
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                    </Link>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        title="Salin Link"
-                                                        onClick={() => copyLink(event.public_url)}
-                                                    >
-                                                        <Copy className="h-4 w-4" />
-                                                    </Button>
-                                                    <a href={event.public_url} target="_blank" rel="noopener noreferrer">
-                                                        <Button variant="ghost" size="sm" title="Buka Form">
-                                                            <ExternalLink className="h-4 w-4" />
-                                                        </Button>
-                                                    </a>
-                                                    <Button
-                                                        variant="ghost"
-                                                        size="sm"
-                                                        className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                                                        title="Hapus"
-                                                        onClick={() => deleteEvent(event.id)}
-                                                    >
-                                                        <Trash2 className="h-4 w-4" />
-                                                    </Button>
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))
-                                )}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+                                            </div>
+                                            <div className="flex flex-wrap items-center gap-4 text-sm text-gray-500">
+                                                <span>{event.form_count} form</span>
+                                                <span>•</span>
+                                                <span>{event.response_count} respons</span>
+                                                {event.event_date && (
+                                                    <>
+                                                        <span>•</span>
+                                                        <span>{event.event_date}</span>
+                                                    </>
+                                                )}
+                                            </div>
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <Link href={route('admin.events.forms', event.id)}>
+                                                <Button className="bg-[#11224e] hover:bg-[#1a3366]">
+                                                    📋 Kelola Kuesioner
+                                                </Button>
+                                            </Link>
+                                            <Link href={route('admin.events.edit', event.id)}>
+                                                <Button variant="outline" size="sm" title="Pengaturan Acara">
+                                                    ⚙️
+                                                </Button>
+                                            </Link>
+                                            <Button
+                                                variant="outline"
+                                                size="sm"
+                                                onClick={() => deleteEvent(event.id)}
+                                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                                title="Hapus Acara"
+                                            >
+                                                🗑️
+                                            </Button>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+                )}
 
                 {/* Pagination */}
                 {events.last_page > 1 && (
                     <div className="flex justify-center gap-2">
-                        {events.links.map((link: any, index: number) => (
+                        {Array.from({ length: events.last_page }, (_, i) => i + 1).map((page) => (
                             <Link
-                                key={index}
-                                href={link.url || '#'}
-                                className={`px-4 py-2 rounded-lg text-sm ${link.active
+                                key={page}
+                                href={route('admin.events.index', { ...filters, page })}
+                                className={`px-3 py-1 rounded ${page === events.current_page
                                     ? 'bg-[#11224e] text-white'
-                                    : 'bg-white border hover:bg-gray-50'
-                                    } ${!link.url && 'opacity-50 cursor-not-allowed'}`}
-                                dangerouslySetInnerHTML={{ __html: link.label }}
-                            />
+                                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
+                            >
+                                {page}
+                            </Link>
                         ))}
                     </div>
                 )}
             </div>
-        </AdminLayout>
+        </AdminLayout >
     );
 }

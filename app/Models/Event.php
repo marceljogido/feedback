@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Str;
 
 class Event extends Model
@@ -53,27 +54,35 @@ class Event extends Model
     }
 
     /**
-     * Get the form questions for the event.
+     * Get the forms for the event.
      */
-    public function questions(): HasMany
+    public function forms(): HasMany
     {
-        return $this->hasMany(FormQuestion::class)->orderBy('sort_order');
+        return $this->hasMany(Form::class);
     }
 
     /**
-     * Get the respondents for the event.
+     * Get all respondents through forms.
      */
-    public function respondents(): HasMany
+    public function respondents(): HasManyThrough
     {
-        return $this->hasMany(Respondent::class);
+        return $this->hasManyThrough(Respondent::class, Form::class);
     }
 
     /**
-     * Get the average rating for the event.
+     * Get the average rating for all forms in the event.
      */
     public function getAverageRatingAttribute(): ?float
     {
-        $ratingQuestions = $this->questions()->where('type', 'rating')->pluck('id');
+        $formIds = $this->forms()->pluck('id');
+        
+        if ($formIds->isEmpty()) {
+            return null;
+        }
+
+        $ratingQuestions = FormQuestion::whereIn('form_id', $formIds)
+            ->where('type', 'rating')
+            ->pluck('id');
         
         if ($ratingQuestions->isEmpty()) {
             return null;
@@ -85,11 +94,19 @@ class Event extends Model
     }
 
     /**
-     * Get response count for the event.
+     * Get total response count for all forms in the event.
      */
     public function getResponseCountAttribute(): int
     {
         return $this->respondents()->count();
+    }
+
+    /**
+     * Get form count for the event.
+     */
+    public function getFormCountAttribute(): int
+    {
+        return $this->forms()->count();
     }
 
     /**
@@ -98,13 +115,5 @@ class Event extends Model
     public function isActive(): bool
     {
         return $this->status === 'active';
-    }
-
-    /**
-     * Get the public URL for the form.
-     */
-    public function getPublicUrlAttribute(): string
-    {
-        return route('form.show', $this->slug);
     }
 }

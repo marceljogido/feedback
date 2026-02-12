@@ -52,12 +52,11 @@ export default function UpdatePasswordForm({
         <section className={className}>
             <header>
                 <h2 className="text-lg font-medium text-gray-900">
-                    Update Password
+                    Perbarui Password
                 </h2>
 
                 <p className="mt-1 text-sm text-gray-600">
-                    Ensure your account is using a long, random password to stay
-                    secure.
+                    Pastikan akun Anda menggunakan password yang panjang dan acak untuk menjaga keamanan.
                 </p>
             </header>
 
@@ -65,7 +64,7 @@ export default function UpdatePasswordForm({
                 <div>
                     <InputLabel
                         htmlFor="current_password"
-                        value="Current Password"
+                        value="Password Saat Ini"
                     />
 
                     <TextInput
@@ -87,7 +86,7 @@ export default function UpdatePasswordForm({
                 </div>
 
                 <div>
-                    <InputLabel htmlFor="password" value="New Password" />
+                    <InputLabel htmlFor="password" value="Password Baru" />
 
                     <TextInput
                         id="password"
@@ -105,7 +104,7 @@ export default function UpdatePasswordForm({
                 <div>
                     <InputLabel
                         htmlFor="password_confirmation"
-                        value="Confirm Password"
+                        value="Konfirmasi Password"
                     />
 
                     <TextInput
@@ -126,7 +125,7 @@ export default function UpdatePasswordForm({
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <PrimaryButton disabled={processing}>Save</PrimaryButton>
+                    <PrimaryButton className="bg-[#f17720] hover:bg-[#d96a1a]" disabled={processing}>Simpan</PrimaryButton>
 
                     <Transition
                         show={recentlySuccessful}
@@ -136,7 +135,7 @@ export default function UpdatePasswordForm({
                         leaveTo="opacity-0"
                     >
                         <p className="text-sm text-gray-600">
-                            Saved.
+                            Tersimpan.
                         </p>
                     </Transition>
                 </div>

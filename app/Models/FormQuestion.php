@@ -12,9 +12,12 @@ class FormQuestion extends Model
     use HasFactory;
 
     protected $fillable = [
-        'event_id',
+        'form_id',
         'question_text',
         'question_text_en',
+        'description',
+        'description_en',
+        'image',
         'type',
         'is_required',
         'options',
@@ -27,11 +30,11 @@ class FormQuestion extends Model
     ];
 
     /**
-     * Get the event that owns the question.
+     * Get the form that owns the question.
      */
-    public function event(): BelongsTo
+    public function form(): BelongsTo
     {
-        return $this->belongsTo(Event::class);
+        return $this->belongsTo(Form::class);
     }
 
     /**

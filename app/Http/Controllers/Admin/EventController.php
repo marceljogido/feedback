@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
-use App\Models\FormQuestion;
+use App\Models\Form;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -20,7 +20,7 @@ class EventController extends Controller
     public function index(Request $request): Response
     {
         $events = Event::with('user')
-            ->withCount('respondents')
+            ->withCount('forms')
             ->when($request->search, function ($query, $search) {
                 $query->where('title', 'like', "%{$search}%");
             })
@@ -36,10 +36,10 @@ class EventController extends Controller
                     'slug' => $event->slug,
                     'status' => $event->status,
                     'locale' => $event->locale,
-                    'response_count' => $event->respondents_count,
+                    'form_count' => $event->forms_count,
+                    'response_count' => $event->response_count,
                     'event_date' => $event->event_date?->format('d M Y'),
                     'created_at' => $event->created_at->format('d M Y'),
-                    'public_url' => url("/form/{$event->slug}"),
                 ];
             });
 
@@ -96,13 +96,10 @@ class EventController extends Controller
         }
 
         return redirect()
-            ->route('admin.events.builder', $event)
-            ->with('success', __('Event berhasil dibuat. Silakan tambahkan pertanyaan.'));
+            ->route('admin.events.forms', $event)
+            ->with('success', __('Event berhasil dibuat. Silakan buat form untuk event ini.'));
     }
 
-    /**
-     * Show the form builder for an event.
-     */
     /**
      * Show the settings for an event.
      */
@@ -119,41 +116,7 @@ class EventController extends Controller
                 'banner_image' => $event->banner_image ? Storage::url($event->banner_image) : null,
                 'logo_image' => $event->logo_image ? Storage::url($event->logo_image) : null,
                 'event_date' => $event->event_date?->format('Y-m-d'),
-                'public_url' => url("/form/{$event->slug}"),
             ],
-        ]);
-    }
-
-    /**
-     * Show the form builder for an event.
-     */
-    public function builder(Event $event): Response
-    {
-        $questions = $event->questions()
-            ->orderBy('sort_order')
-            ->get()
-            ->map(function ($question) {
-                return [
-                    'id' => $question->id,
-                    'question_text' => $question->question_text,
-                    'question_text_en' => $question->question_text_en,
-                    'type' => $question->type,
-                    'is_required' => $question->is_required,
-                    'options' => $question->options,
-                    'sort_order' => $question->sort_order,
-                ];
-            });
-
-        return Inertia::render('Admin/Events/FormBuilder', [
-            'event' => [
-                'id' => $event->id,
-                'title' => $event->title,
-                'file_name' => $event->title, // Just for display if needed
-                'slug' => $event->slug,
-                'status' => $event->status,
-                'public_url' => url("/form/{$event->slug}"),
-            ],
-            'questions' => $questions,
         ]);
     }
 
@@ -203,116 +166,6 @@ class EventController extends Controller
     }
 
     /**
-     * Save form questions for an event.
-     */
-    public function saveQuestions(Request $request, Event $event): RedirectResponse
-    {
-        $validated = $request->validate([
-            'questions' => 'required|array',
-            'questions.*.id' => 'nullable|integer|exists:form_questions,id',
-            'questions.*.question_text' => 'required|string',
-            'questions.*.question_text_en' => 'nullable|string',
-            'questions.*.type' => 'required|in:text,textarea,rating,file,multiple_choice',
-            'questions.*.is_required' => 'boolean',
-            'questions.*.options' => 'nullable|array',
-            'questions.*.sort_order' => 'required|integer',
-        ]);
-
-        // Get existing question IDs
-        $existingIds = collect($validated['questions'])
-            ->pluck('id')
-            ->filter()
-            ->toArray();
-
-        // Delete removed questions
-        $event->questions()
-            ->whereNotIn('id', $existingIds)
-            ->delete();
-
-        // Upsert questions
-        foreach ($validated['questions'] as $questionData) {
-            if (isset($questionData['id'])) {
-                FormQuestion::where('id', $questionData['id'])
-                    ->update([
-                        'question_text' => $questionData['question_text'],
-                        'question_text_en' => $questionData['question_text_en'] ?? null,
-                        'type' => $questionData['type'],
-                        'is_required' => $questionData['is_required'] ?? false,
-                        'options' => $questionData['options'] ?? null,
-                        'sort_order' => $questionData['sort_order'],
-                    ]);
-            } else {
-                $event->questions()->create([
-                    'question_text' => $questionData['question_text'],
-                    'question_text_en' => $questionData['question_text_en'] ?? null,
-                    'type' => $questionData['type'],
-                    'is_required' => $questionData['is_required'] ?? false,
-                    'options' => $questionData['options'] ?? null,
-                    'sort_order' => $questionData['sort_order'],
-                ]);
-            }
-        }
-
-        return back()->with('success', __('Pertanyaan berhasil disimpan.'));
-    }
-
-    /**
-     * View responses for an event.
-     */
-    public function responses(Event $event): Response
-    {
-        $responses = $event->respondents()
-            ->with(['answers.question'])
-            ->orderBy('submitted_at', 'desc')
-            ->paginate(20)
-            ->through(function ($respondent) {
-                $answers = $respondent->answers->map(function ($answer) {
-                    return [
-                        'question' => $answer->question->question_text,
-                        'type' => $answer->question->type,
-                        'value' => $answer->formatted_answer,
-                    ];
-                });
-
-                return [
-                    'id' => $respondent->id,
-                    'name' => $respondent->name ?? 'Anonim',
-                    'email' => $respondent->email,
-                    'submitted_at' => $respondent->submitted_at->format('d M Y H:i'),
-                    'answers' => $answers,
-                ];
-            });
-
-        // Calculate stats
-        $avgRating = $event->average_rating;
-        $totalResponses = $event->respondents()->count();
-
-        return Inertia::render('Admin/Events/Responses', [
-            'event' => [
-                'id' => $event->id,
-                'title' => $event->title,
-                'slug' => $event->slug,
-            ],
-            'responses' => $responses,
-            'stats' => [
-                'totalResponses' => $totalResponses,
-                'avgRating' => $avgRating ? round($avgRating, 1) : null,
-            ],
-        ]);
-    }
-
-    /**
-     * Toggle event status.
-     */
-    public function toggleStatus(Event $event): RedirectResponse
-    {
-        $newStatus = $event->status === 'active' ? 'closed' : 'active';
-        $event->update(['status' => $newStatus]);
-
-        return back()->with('success', __('Status event berhasil diubah.'));
-    }
-
-    /**
      * Delete an event.
      */
     public function destroy(Event $event): RedirectResponse
@@ -325,42 +178,18 @@ class EventController extends Controller
     }
 
     /**
-     * Display a listing of forms (Events focused on form management).
-     */
-    public function forms(Request $request): Response
-    {
-        $events = Event::with('user')
-            ->orderBy('created_at', 'desc')
-            ->paginate(10)
-            ->through(function ($event) {
-                return [
-                    'id' => $event->id,
-                    'title' => $event->title,
-                    'slug' => $event->slug,
-                    'status' => $event->status,
-                    'public_url' => url("/form/{$event->slug}"),
-                    'updated_at' => $event->updated_at->format('d M Y'),
-                ];
-            });
-
-        return Inertia::render('Admin/Forms/Index', [
-            'events' => $events,
-        ]);
-    }
-
-    /**
-     * Display a listing of all responses across all events.
+     * Display a listing of all responses across all forms.
      */
     public function allResponses(Request $request): Response
     {
-        // Need to join events to get event title
-        $respondents = \App\Models\Respondent::with(['event', 'answers.question'])
+        $respondents = \App\Models\Respondent::with(['form.event', 'answers.question'])
             ->orderBy('submitted_at', 'desc')
             ->paginate(20)
             ->through(function ($respondent) {
                 return [
                     'id' => $respondent->id,
-                    'event_title' => $respondent->event->title,
+                    'event_title' => $respondent->form->event->title,
+                    'form_name' => $respondent->form->name,
                     'name' => $respondent->name ?? 'Anonim',
                     'email' => $respondent->email,
                     'submitted_at' => $respondent->submitted_at->format('d M Y H:i'),
@@ -377,5 +206,27 @@ class EventController extends Controller
         return Inertia::render('Admin/Responses/Index', [
             'respondents' => $respondents,
         ]);
+    }
+
+    /**
+     * Update event theme config.
+     */
+    public function updateThemeConfig(Request $request, Event $event): RedirectResponse
+    {
+        $validated = $request->validate([
+            'custom_labels' => 'nullable|array',
+            'custom_labels.name' => 'nullable|string',
+            'custom_labels.name_en' => 'nullable|string',
+            'custom_labels.email' => 'nullable|string',
+            'custom_labels.email_en' => 'nullable|string',
+        ]);
+
+        $themeConfig = $event->theme_config ?? [];
+        $themeConfig['custom_labels'] = $validated['custom_labels'] ?? [];
+        
+        $event->theme_config = $themeConfig;
+        $event->save();
+
+        return back()->with('success', __('Pengaturan tampilan berhasil diperbarui.'));
     }
 }

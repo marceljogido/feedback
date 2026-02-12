@@ -1,16 +1,12 @@
 import { Link, usePage } from '@inertiajs/react';
 import { PropsWithChildren, ReactNode, useState } from 'react';
 import {
-    LayoutDashboard,
-    Calendar,
-    Users,
     Settings,
     Menu,
     X,
     LogOut,
     ChevronDown,
-    FileText,
-    MessageSquare,
+    ChevronRight,
 } from 'lucide-react';
 import { Button } from '@/Components/ui/button';
 import {
@@ -25,42 +21,65 @@ import { Avatar, AvatarFallback } from '@/Components/ui/avatar';
 interface NavItem {
     name: string;
     href: string;
-    icon: React.ComponentType<{ className?: string }>;
+    emoji: string;
     current: boolean;
+    children?: NavItem[];
+}
+
+interface CurrentEvent {
+    id: number;
+    title: string;
+}
+
+interface CurrentForm {
+    id: number;
+    name: string;
 }
 
 export default function AdminLayout({
     header,
     children,
 }: PropsWithChildren<{ header?: ReactNode }>) {
-    const { auth } = usePage().props as any;
+    const pageProps = usePage().props as any;
+    const { auth } = pageProps;
     const user = auth.user;
     const [sidebarOpen, setSidebarOpen] = useState(false);
+
+    const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
+
+    // Get current context from page props (if available)
+    const currentEvent: CurrentEvent | null = pageProps.event || null;
+    const currentForm: CurrentForm | null = pageProps.form || null;
+
+    // Check which route we're on
+    const isOnEventForms = route().current('admin.events.forms') || route().current('admin.events.forms.create');
+    const isOnFormPages = route().current('admin.forms.*');
+    const isInEventContext = isOnEventForms || isOnFormPages;
 
     const navigation: NavItem[] = [
         {
             name: 'Dashboard',
             href: route('admin.dashboard'),
-            icon: LayoutDashboard,
+            emoji: '📊',
             current: route().current('admin.dashboard*'),
         },
         {
-            name: 'Events',
+            name: 'Acara',
             href: route('admin.events.index'),
-            icon: Calendar,
-            current: route().current('admin.events.index') || route().current('admin.events.create'),
+            emoji: '📅',
+            current: route().current('admin.events.index') || route().current('admin.events.create') || route().current('admin.events.edit'),
         },
         {
-            name: 'Kelola Form',
-            href: route('admin.forms.index'),
-            icon: FileText,
-            current: route().current('admin.forms.index'),
-        },
-        {
-            name: 'Respons',
+            name: 'Semua Jawaban',
             href: route('admin.responses.index'),
-            icon: MessageSquare,
-            current: route().current('admin.responses.index'),
+            emoji: '💬',
+            current: route().current('admin.responses.*'),
+        },
+        {
+            name: 'Manajemen User',
+            href: route('admin.users.index'),
+            emoji: '👤',
+            current: route().current('admin.users.*'),
         },
     ];
 
@@ -76,8 +95,8 @@ export default function AdminLayout({
 
             {/* Sidebar */}
             <aside
-                className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-[#11224e] transition-transform duration-300 lg:translate-x-0 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-                    }`}
+                className={`fixed inset-y-0 left-0 z-50 w-64 transform bg-[#11224e] transition-transform duration-300 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+                    } ${desktopSidebarOpen ? 'lg:translate-x-0' : 'lg:-translate-x-full'}`}
             >
                 <div className="flex h-16 items-center justify-between px-4">
                     <Link href={route('admin.dashboard')} className="flex items-center">
@@ -96,41 +115,83 @@ export default function AdminLayout({
                 </div>
 
                 <nav className="mt-8 px-4 space-y-1">
-                    {navigation.map((item) => (
-                        <Link
-                            key={item.name}
-                            href={item.href}
-                            className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${item.current
-                                ? 'bg-white/10 text-white'
-                                : 'text-gray-300 hover:bg-white/5 hover:text-white'
-                                }`}
-                        >
-                            <item.icon className="h-5 w-5" />
-                            {item.name}
-                        </Link>
-                    ))}
+                    {navigation
+                        .filter(item => {
+                            if (item.name === 'Manajemen User') {
+                                return user.roles?.includes('super_admin');
+                            }
+                            return true;
+                        })
+                        .map((item) => (
+                            <div key={item.name}>
+                                <Link
+                                    href={item.href}
+                                    className={`flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-colors ${item.current
+                                        ? 'bg-white/10 text-white'
+                                        : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                                        }`}
+                                >
+                                    <span className="text-xl">{item.emoji}</span>
+                                    {item.name}
+                                </Link>
+
+                                {/* Show submenu for Acara when in event/form context */}
+                                {item.name === 'Acara' && isInEventContext && currentEvent && (
+                                    <div className="ml-4 mt-1 pl-4 border-l-2 border-white/20">
+                                        {/* Current Event */}
+                                        <Link
+                                            href={route('admin.events.forms', currentEvent.id)}
+                                            className={`flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium transition-colors ${isOnEventForms && !isOnFormPages
+                                                ? 'bg-[#f17720] text-white'
+                                                : 'text-gray-300 hover:bg-white/5 hover:text-white'
+                                                }`}
+                                        >
+                                            <span>📋</span>
+                                            <span className="truncate">{currentEvent.title}</span>
+                                        </Link>
+
+                                        {/* Current Form (if on form page) */}
+                                        {isOnFormPages && currentForm && (
+                                            <div className="ml-3 mt-1 pl-3 border-l border-white/10">
+                                                <div className="flex items-center gap-2 px-3 py-2 rounded-md text-xs font-medium bg-[#f17720] text-white">
+                                                    <span>📝</span>
+                                                    <span className="truncate">{currentForm.name}</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
+                        ))}
                 </nav>
             </aside>
 
             {/* Main content */}
-            <div className="lg:pl-64">
+            <div className={`transition-all duration-300 ${desktopSidebarOpen ? 'lg:pl-64' : 'lg:pl-0'}`}>
                 {/* Top bar */}
                 <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-white px-4 lg:px-8">
-                    <button
-                        className="lg:hidden"
-                        onClick={() => setSidebarOpen(true)}
-                    >
-                        <Menu className="h-6 w-6 text-gray-600" />
-                    </button>
+                    <div className="flex items-center gap-4">
+                        <button
+                            className="lg:hidden"
+                            onClick={() => setSidebarOpen(true)}
+                        >
+                            <Menu className="h-6 w-6 text-gray-600" />
+                        </button>
 
-                    <div className="flex-1 lg:hidden" />
+                        <button
+                            className="hidden lg:block text-gray-600 hover:text-gray-900"
+                            onClick={() => setDesktopSidebarOpen(!desktopSidebarOpen)}
+                        >
+                            <Menu className="h-6 w-6" />
+                        </button>
 
-                    <div className="hidden lg:block">
-                        {header && (
-                            <h1 className="text-xl font-semibold text-gray-900">
-                                {header}
-                            </h1>
-                        )}
+                        <div className="hidden lg:block">
+                            {header && (
+                                <h1 className="text-xl font-semibold text-gray-900">
+                                    {header}
+                                </h1>
+                            )}
+                        </div>
                     </div>
 
                     <DropdownMenu>

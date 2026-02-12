@@ -129,7 +129,7 @@ export default function Dashboard({ stats, recentEvents, recentResponses }: Prop
                                         >
                                             <div className="flex-1 min-w-0">
                                                 <Link
-                                                    href={route('admin.events.edit', event.id)}
+                                                    href={route('admin.events.forms', event.id)}
                                                     className="font-medium text-gray-900 hover:text-[#11224e] truncate block"
                                                 >
                                                     {event.title}
@@ -143,7 +143,7 @@ export default function Dashboard({ stats, recentEvents, recentResponses }: Prop
                                                     </span>
                                                 </div>
                                             </div>
-                                            <Link href={route('admin.events.edit', event.id)}>
+                                            <Link href={route('admin.events.forms', event.id)}>
                                                 <ArrowRight className="h-5 w-5 text-gray-400" />
                                             </Link>
                                         </div>

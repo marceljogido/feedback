@@ -12,23 +12,34 @@ class Respondent extends Model
     use HasFactory;
 
     protected $fillable = [
-        'event_id',
+        'form_id',
         'name',
         'email',
+        'custom_fields',
         'ip_address',
         'submitted_at',
+        'edit_token',
     ];
 
     protected $casts = [
         'submitted_at' => 'datetime',
+        'custom_fields' => 'array',
     ];
 
     /**
-     * Get the event that owns the respondent.
+     * Get the form that owns the respondent.
+     */
+    public function form(): BelongsTo
+    {
+        return $this->belongsTo(Form::class);
+    }
+
+    /**
+     * Get the event through the form.
      */
     public function event(): BelongsTo
     {
-        return $this->belongsTo(Event::class);
+        return $this->form->event();
     }
 
     /**

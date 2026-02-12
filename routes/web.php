@@ -2,6 +2,8 @@
 
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\EventController;
+use App\Http\Controllers\Admin\FormController as AdminFormController;
+use App\Http\Controllers\Admin\UserController;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Foundation\Application;
@@ -21,6 +23,8 @@ Route::get('/', function () {
 Route::get('/form/{slug}', [FormController::class, 'show'])->name('form.show');
 Route::post('/form/{slug}', [FormController::class, 'submit'])->name('form.submit');
 Route::get('/form/{slug}/thankyou', [FormController::class, 'thankyou'])->name('form.thankyou');
+Route::get('/form/{slug}/edit/{token}', [FormController::class, 'edit'])->name('form.edit');
+Route::put('/form/{slug}/edit/{token}', [FormController::class, 'update'])->name('form.update');
 
 /*
 |--------------------------------------------------------------------------
@@ -37,21 +41,46 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
     Route::get('/events', [EventController::class, 'index'])->name('events.index');
     Route::get('/events/create', [EventController::class, 'create'])->name('events.create');
     Route::post('/events', [EventController::class, 'store'])->name('events.store');
-    Route::get('/events/{event}/edit', [EventController::class, 'edit'])->name('events.edit'); // Settings only
+    Route::get('/events/{event}/edit', [EventController::class, 'edit'])->name('events.edit');
     Route::put('/events/{event}', [EventController::class, 'update'])->name('events.update');
     Route::delete('/events/{event}', [EventController::class, 'destroy'])->name('events.destroy');
+    Route::post('/events/{event}/theme-config', [EventController::class, 'updateThemeConfig'])->name('events.update-theme-config');
     
-    // Form Builder
-    Route::get('/events/{event}/builder', [EventController::class, 'builder'])->name('events.builder');
-    Route::post('/events/{event}/questions', [EventController::class, 'saveQuestions'])->name('events.questions.save');
-    Route::get('/events/{event}/responses', [EventController::class, 'responses'])->name('events.responses');
-    Route::post('/events/{event}/toggle-status', [EventController::class, 'toggleStatus'])->name('events.toggle-status');
+    // Event Forms
+    Route::get('/events/{event}/forms', [AdminFormController::class, 'index'])->name('events.forms');
+    Route::get('/events/{event}/forms/create', [AdminFormController::class, 'create'])->name('events.forms.create');
+    Route::post('/events/{event}/forms', [AdminFormController::class, 'store'])->name('events.forms.store');
 
-    // Forms (separate page)
-    Route::get('/forms', [EventController::class, 'forms'])->name('forms.index');
+    // Form Management
+    Route::get('/forms/{form}/edit', [AdminFormController::class, 'edit'])->name('forms.edit');
+    Route::put('/forms/{form}', [AdminFormController::class, 'update'])->name('forms.update');
+    Route::delete('/forms/{form}', [AdminFormController::class, 'destroy'])->name('forms.destroy');
+    Route::get('/forms/{form}/builder', [AdminFormController::class, 'builder'])->name('forms.builder');
+    Route::post('/forms/{form}/questions', [AdminFormController::class, 'saveQuestions'])->name('forms.questions.save');
+    Route::get('/forms/{form}/responses', [AdminFormController::class, 'responses'])->name('forms.responses');
+    Route::get('/forms/{form}/export-csv', [AdminFormController::class, 'exportCsv'])->name('forms.export-csv');
+    Route::post('/forms/{form}/toggle-status', [AdminFormController::class, 'toggleStatus'])->name('forms.toggle-status');
+    Route::delete('/forms/{form}/responses/delete-all', [AdminFormController::class, 'destroyAllResponses'])->name('forms.responses.destroy-all');
+    Route::delete('/responses/{respondent}', [AdminFormController::class, 'destroyResponse'])->name('responses.destroy');
+    Route::post('/forms/{form}/duplicate', [AdminFormController::class, 'duplicate'])->name('forms.duplicate');
+    
+    // Question Image Upload
+    Route::post('/forms/upload-question-image', [AdminFormController::class, 'uploadQuestionImage'])->name('forms.upload-question-image');
+    Route::post('/forms/delete-question-image', [AdminFormController::class, 'deleteQuestionImage'])->name('forms.delete-question-image');
+    
+    // Form Customization (Banner, Logo, Header)
+    Route::post('/forms/{form}/upload-banner', [AdminFormController::class, 'uploadBanner'])->name('forms.upload-banner');
+    Route::post('/forms/{form}/upload-logo', [AdminFormController::class, 'uploadLogo'])->name('forms.upload-logo');
+    Route::post('/forms/{form}/update-header', [AdminFormController::class, 'updateHeader'])->name('forms.update-header');
+    Route::post('/forms/{form}/update-collect-settings', [AdminFormController::class, 'updateCollectSettings'])->name('forms.update-collect-settings');
 
     // All Responses (separate page)
     Route::get('/responses', [EventController::class, 'allResponses'])->name('responses.index');
+
+    // User Management
+    Route::middleware('role:super_admin')->group(function () {
+        Route::resource('users', UserController::class);
+    });
 });
 
 /*

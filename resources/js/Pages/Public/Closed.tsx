@@ -1,14 +1,20 @@
 import { Head } from '@inertiajs/react';
-import { Lock } from 'lucide-react';
+import { Lock, Clock } from 'lucide-react';
 
 interface Props {
     event: {
         title: string;
         logo_image: string | null;
     };
+    form?: {
+        name: string;
+    };
+    message?: string;
+    message_en?: string;
 }
 
-export default function Closed({ event }: Props) {
+export default function Closed({ event, form, message }: Props) {
+    const isScheduled = !!message;
     return (
         <>
             <Head title="Form Ditutup" />
@@ -25,15 +31,19 @@ export default function Closed({ event }: Props) {
 
                     <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 max-w-md">
                         <div className="mb-6">
-                            <Lock className="h-20 w-20 mx-auto text-gray-400" />
+                            {isScheduled ? (
+                                <Clock className="h-20 w-20 mx-auto text-amber-400" />
+                            ) : (
+                                <Lock className="h-20 w-20 mx-auto text-gray-400" />
+                            )}
                         </div>
 
                         <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                            Form Ditutup
+                            {isScheduled ? 'Jadwal Form' : 'Form Ditutup'}
                         </h1>
 
                         <p className="text-gray-600 text-lg">
-                            Form testimoni untuk <strong>{event.title}</strong> sudah ditutup.
+                            {message || <>Form testimoni untuk <strong>{event.title}</strong> sudah ditutup.</>}
                         </p>
 
                         <p className="text-gray-500 mt-4">

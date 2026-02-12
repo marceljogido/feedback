@@ -18,7 +18,7 @@ import {
     DialogTrigger,
 } from '@/Components/ui/dialog';
 import { Button } from '@/Components/ui/button';
-import { ArrowLeft, Eye, Star, Download, FileText } from 'lucide-react';
+import { ArrowLeft, Eye, Star, Download, FileText, Plus } from 'lucide-react';
 
 interface Answer {
     question: string;
@@ -106,10 +106,22 @@ export default function Responses({ event, responses, stats }: Props) {
                         Kembali ke Form Builder
                     </Link>
 
-                    <Button variant="outline">
-                        <Download className="h-4 w-4 mr-2" />
-                        Export Excel
-                    </Button>
+                    <div className="flex gap-2">
+                        <a
+                            href={`/form/${event.slug}?source=admin_manual`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <Button className="bg-emerald-600 hover:bg-emerald-700">
+                                <Plus className="h-4 w-4 mr-2" />
+                                Input Manual
+                            </Button>
+                        </a>
+                        <Button variant="outline">
+                            <Download className="h-4 w-4 mr-2" />
+                            Export Excel
+                        </Button>
+                    </div>
                 </div>
 
                 {/* Stats */}

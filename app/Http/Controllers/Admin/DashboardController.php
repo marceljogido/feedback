@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Event;
+use App\Models\Form;
 use App\Models\Respondent;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -20,9 +21,10 @@ class DashboardController extends Controller
         
         // Get statistics
         $totalEvents = Event::count();
+        $totalForms = Form::count();
         $totalResponses = Respondent::count();
         
-        // Calculate average rating across all events
+        // Calculate average rating across all forms
         $avgRating = \DB::table('answers')
             ->join('form_questions', 'answers.form_question_id', '=', 'form_questions.id')
             ->where('form_questions.type', 'rating')
@@ -31,7 +33,7 @@ class DashboardController extends Controller
         
         // Get recent events with response count
         $recentEvents = Event::with('user')
-            ->withCount('respondents')
+            ->withCount('forms')
             ->orderBy('created_at', 'desc')
             ->take(5)
             ->get()
@@ -41,28 +43,32 @@ class DashboardController extends Controller
                     'title' => $event->title,
                     'slug' => $event->slug,
                     'status' => $event->status,
-                    'response_count' => $event->respondents_count,
+                    'form_count' => $event->forms_count,
+                    'response_count' => $event->response_count,
                     'created_at' => $event->created_at->format('d M Y'),
                 ];
             });
         
         // Get recent responses
-        $recentResponses = Respondent::with(['event', 'answers.question'])
+        $recentResponses = Respondent::with(['form.event', 'answers.question'])
+            ->whereHas('form.event')
             ->orderBy('submitted_at', 'desc')
             ->take(5)
             ->get()
             ->map(function ($respondent) {
                 return [
                     'id' => $respondent->id,
-                    'event_title' => $respondent->event->title,
+                    'event_title' => $respondent->form?->event?->title ?? 'Unknown',
+                    'form_name' => $respondent->form?->name ?? 'Unknown',
                     'name' => $respondent->name ?? 'Anonim',
-                    'submitted_at' => $respondent->submitted_at->diffForHumans(),
+                    'submitted_at' => $respondent->submitted_at?->diffForHumans() ?? '-',
                 ];
             });
 
         return Inertia::render('Admin/Dashboard', [
             'stats' => [
                 'totalEvents' => $totalEvents,
+                'totalForms' => $totalForms,
                 'totalResponses' => $totalResponses,
                 'avgRating' => $avgRating ? round($avgRating, 1) : null,
             ],
