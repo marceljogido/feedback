@@ -97,7 +97,7 @@ export default function FormBuilder({ event, questions: initialQuestions }: Prop
     const saveQuestions = () => {
         setSaving(true);
         router.post(
-            route('admin.events.questions.save', event.id),
+            route('admin.forms.questions.save', event.id),
             { questions: questions.map((q, i) => ({ ...q, sort_order: i })) },
             {
                 onFinish: () => setSaving(false),
@@ -107,7 +107,8 @@ export default function FormBuilder({ event, questions: initialQuestions }: Prop
     };
 
     const toggleStatus = () => {
-        router.post(route('admin.events.toggle-status', event.id), {}, {
+        // Correcting route name to match web.php
+        router.post(route('admin.forms.toggle-status', event.id), {}, {
             preserveScroll: true,
         });
     };

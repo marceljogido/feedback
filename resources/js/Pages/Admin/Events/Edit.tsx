@@ -80,7 +80,7 @@ export default function EditEvent({ event }: Props) {
     };
 
     const toggleStatus = () => {
-        router.post(route('admin.events.toggle-status', event.id), {}, {
+        router.post(route('admin.forms.toggle-status', event.id), {}, {
             preserveScroll: true,
         });
     };
