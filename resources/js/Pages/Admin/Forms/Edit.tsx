@@ -225,118 +225,6 @@ export default function EditForm({ form, event }: Props) {
                     </CardContent>
                 </Card>
 
-                {/* Scheduling Card */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            <Calendar className="h-5 w-5" />
-                            Jadwal Buka/Tutup Otomatis
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-gray-500 mb-4">
-                            Atur jadwal kapan form akan dibuka dan ditutup secara otomatis. Kosongkan jika tidak ingin menggunakan jadwal.
-                        </p>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                                <Label htmlFor="opens_at">Waktu Mulai (Buka)</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        id="opens_at"
-                                        type="datetime-local"
-                                        value={data.opens_at}
-                                        onChange={(e) => setData('opens_at', e.target.value)}
-                                        className={errors.opens_at ? 'border-red-500' : ''}
-                                    />
-                                    {data.opens_at && (
-                                        <Button type="button" variant="ghost" size="sm" onClick={() => setData('opens_at', '')}>
-                                            ✕
-                                        </Button>
-                                    )}
-                                </div>
-                                {errors.opens_at && <p className="text-sm text-red-500">{errors.opens_at}</p>}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="closes_at">Waktu Selesai (Tutup)</Label>
-                                <div className="flex gap-2">
-                                    <Input
-                                        id="closes_at"
-                                        type="datetime-local"
-                                        value={data.closes_at}
-                                        onChange={(e) => setData('closes_at', e.target.value)}
-                                        className={errors.closes_at ? 'border-red-500' : ''}
-                                    />
-                                    {data.closes_at && (
-                                        <Button type="button" variant="ghost" size="sm" onClick={() => setData('closes_at', '')}>
-                                            ✕
-                                        </Button>
-                                    )}
-                                </div>
-                                {errors.closes_at && <p className="text-sm text-red-500">{errors.closes_at}</p>}
-                            </div>
-                        </div>
-
-                        {(data.opens_at || data.closes_at) && (
-                            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
-                                📅 Jadwal aktif:
-                                {data.opens_at && <span> Buka <strong>{new Date(data.opens_at).toLocaleString('id-ID')}</strong></span>}
-                                {data.opens_at && data.closes_at && <span> —</span>}
-                                {data.closes_at && <span> Tutup <strong>{new Date(data.closes_at).toLocaleString('id-ID')}</strong></span>}
-                            </div>
-                        )}
-
-                        {/* Edit after submission toggle */}
-                        <div className="mt-6 pt-6 border-t">
-                            <div className="flex items-center justify-between">
-                                <div>
-                                    <Label className="text-base font-medium">✏️ Izinkan Edit Jawaban</Label>
-                                    <p className="text-sm text-gray-500 mt-1">
-                                        Responden akan mendapat link untuk mengedit jawaban setelah submit.
-                                    </p>
-                                </div>
-                                <button
-                                    type="button"
-                                    onClick={() => setData('allow_edit', !data.allow_edit)}
-                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${data.allow_edit ? 'bg-[#11224e]' : 'bg-gray-300'
-                                        }`}
-                                >
-                                    <span
-                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${data.allow_edit ? 'translate-x-6' : 'translate-x-1'
-                                            }`}
-                                    />
-                                </button>
-                            </div>
-                        </div>
-                    </CardContent>
-                </Card>
-
-                {/* Response Limit Card */}
-                <Card>
-                    <CardHeader>
-                        <CardTitle className="flex items-center gap-2">
-                            🔢 Pembatasan Responden
-                        </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <p className="text-sm text-gray-500 mb-4">
-                            Batasi jumlah responden yang bisa mengisi form ini. Kosongkan jika tidak ada batasan.
-                        </p>
-                        <div className="space-y-2 max-w-xs">
-                            <Label htmlFor="response_limit">Maksimal Jumlah Responden</Label>
-                            <Input
-                                id="response_limit"
-                                type="number"
-                                placeholder="Contoh: 100"
-                                value={data.response_limit}
-                                onChange={(e) => setData('response_limit', e.target.value)}
-                                className={errors.response_limit ? 'border-red-500' : ''}
-                            />
-                            {errors.response_limit && <p className="text-sm text-red-500">{errors.response_limit}</p>}
-                        </div>
-                    </CardContent>
-                </Card>
-
                 {/* Custom Thank You Page Card */}
                 <Card>
                     <CardHeader>
@@ -446,6 +334,118 @@ export default function EditForm({ form, event }: Props) {
                                 <div className="p-3 bg-gray-50 rounded-lg border text-sm text-gray-600 break-all">
                                     {form.public_url}
                                 </div>
+                            </div>
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Response Limit Card */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            🔢 Pembatasan Responden
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-gray-500 mb-4">
+                            Batasi jumlah responden yang bisa mengisi form ini. Kosongkan jika tidak ada batasan.
+                        </p>
+                        <div className="space-y-2 max-w-xs">
+                            <Label htmlFor="response_limit">Maksimal Jumlah Responden</Label>
+                            <Input
+                                id="response_limit"
+                                type="number"
+                                placeholder="Contoh: 100"
+                                value={data.response_limit}
+                                onChange={(e) => setData('response_limit', e.target.value)}
+                                className={errors.response_limit ? 'border-red-500' : ''}
+                            />
+                            {errors.response_limit && <p className="text-sm text-red-500">{errors.response_limit}</p>}
+                        </div>
+                    </CardContent>
+                </Card>
+
+                {/* Scheduling Card */}
+                <Card>
+                    <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                            <Calendar className="h-5 w-5" />
+                            Jadwal Buka/Tutup Otomatis
+                        </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <p className="text-sm text-gray-500 mb-4">
+                            Atur jadwal kapan form akan dibuka dan ditutup secara otomatis. Kosongkan jika tidak ingin menggunakan jadwal.
+                        </p>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="opens_at">Waktu Mulai (Buka)</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        id="opens_at"
+                                        type="datetime-local"
+                                        value={data.opens_at}
+                                        onChange={(e) => setData('opens_at', e.target.value)}
+                                        className={errors.opens_at ? 'border-red-500' : ''}
+                                    />
+                                    {data.opens_at && (
+                                        <Button type="button" variant="ghost" size="sm" onClick={() => setData('opens_at', '')}>
+                                            ✕
+                                        </Button>
+                                    )}
+                                </div>
+                                {errors.opens_at && <p className="text-sm text-red-500">{errors.opens_at}</p>}
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="closes_at">Waktu Selesai (Tutup)</Label>
+                                <div className="flex gap-2">
+                                    <Input
+                                        id="closes_at"
+                                        type="datetime-local"
+                                        value={data.closes_at}
+                                        onChange={(e) => setData('closes_at', e.target.value)}
+                                        className={errors.closes_at ? 'border-red-500' : ''}
+                                    />
+                                    {data.closes_at && (
+                                        <Button type="button" variant="ghost" size="sm" onClick={() => setData('closes_at', '')}>
+                                            ✕
+                                        </Button>
+                                    )}
+                                </div>
+                                {errors.closes_at && <p className="text-sm text-red-500">{errors.closes_at}</p>}
+                            </div>
+                        </div>
+
+                        {(data.opens_at || data.closes_at) && (
+                            <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm text-amber-800">
+                                📅 Jadwal aktif:
+                                {data.opens_at && <span> Buka <strong>{new Date(data.opens_at).toLocaleString('id-ID')}</strong></span>}
+                                {data.opens_at && data.closes_at && <span> —</span>}
+                                {data.closes_at && <span> Tutup <strong>{new Date(data.closes_at).toLocaleString('id-ID')}</strong></span>}
+                            </div>
+                        )}
+
+                        {/* Edit after submission toggle */}
+                        <div className="mt-6 pt-6 border-t">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <Label className="text-base font-medium">✏️ Izinkan Edit Jawaban</Label>
+                                    <p className="text-sm text-gray-500 mt-1">
+                                        Responden akan mendapat link untuk mengedit jawaban setelah submit.
+                                    </p>
+                                </div>
+                                <button
+                                    type="button"
+                                    onClick={() => setData('allow_edit', !data.allow_edit)}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors duration-200 ${data.allow_edit ? 'bg-[#11224e]' : 'bg-gray-300'
+                                        }`}
+                                >
+                                    <span
+                                        className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-200 ${data.allow_edit ? 'translate-x-6' : 'translate-x-1'
+                                            }`}
+                                    />
+                                </button>
                             </div>
                         </div>
                     </CardContent>
