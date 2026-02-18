@@ -17,6 +17,7 @@ interface Response {
     id: number;
     name: string;
     email: string | null;
+    custom_fields: { [key: string]: string };
     submitted_at: string;
     answers: Answer[];
 }
@@ -25,6 +26,7 @@ interface Form {
     id: number;
     name: string;
     slug: string;
+    respondent_fields: Array<{ key: string; label: string; type: string }>;
 }
 
 interface Event {
@@ -243,7 +245,19 @@ export default function FormResponses({ form, event, responses, stats, questions
                                     <tr>
                                         <th className="px-6 py-4 w-16 text-center whitespace-nowrap">No</th>
                                         <th className="px-6 py-4 whitespace-nowrap">Waktu</th>
-                                        <th className="px-6 py-4 whitespace-nowrap">Responden</th>
+                                        {/* Dynamic Respondent Fields Headers */}
+                                        {form.respondent_fields?.map((f) => (
+                                            <th key={f.key} className="px-6 py-4 whitespace-nowrap">
+                                                {f.label || f.key}
+                                            </th>
+                                        ))}
+                                        {/* Fallback Name/Email if not in fields */}
+                                        {!form.respondent_fields?.some(f => f.key === 'name') && (
+                                            <th className="px-6 py-4 whitespace-nowrap">Nama</th>
+                                        )}
+                                        {!form.respondent_fields?.some(f => f.key === 'email') && (
+                                            <th className="px-6 py-4 whitespace-nowrap">Email</th>
+                                        )}
                                         {questions.map((q) => (
                                             <th key={q.id} className="px-6 py-4 min-w-[200px]">
                                                 {q.question_text}
@@ -264,14 +278,25 @@ export default function FormResponses({ form, event, responses, stats, questions
                                                     {response.submitted_at}
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 font-medium text-gray-900 whitespace-nowrap">
-                                                <div className="flex flex-col">
-                                                    <span className="font-bold">{response.name}</span>
-                                                    {response.email && (
-                                                        <span className="text-xs text-gray-500">{response.email}</span>
-                                                    )}
-                                                </div>
-                                            </td>
+                                            {/* Dynamic Respondent Fields Data */}
+                                            {form.respondent_fields?.map((f) => (
+                                                <td key={f.key} className="px-6 py-4 text-gray-900 whitespace-nowrap">
+                                                    {f.key === 'name' ? (response.name || 'Anonim') :
+                                                        f.key === 'email' ? (response.email || '-') :
+                                                            (response.custom_fields?.[f.key] || '-')}
+                                                </td>
+                                            ))}
+                                            {/* Fallback Name/Email Data */}
+                                            {!form.respondent_fields?.some(f => f.key === 'name') && (
+                                                <td className="px-6 py-4 font-bold text-gray-900 whitespace-nowrap">
+                                                    {response.name || 'Anonim'}
+                                                </td>
+                                            )}
+                                            {!form.respondent_fields?.some(f => f.key === 'email') && (
+                                                <td className="px-6 py-4 text-gray-500 whitespace-nowrap">
+                                                    {response.email || '-'}
+                                                </td>
+                                            )}
                                             {questions.map((q) => {
                                                 const answer = response.answers.find(a => a.question === q.question_text);
                                                 return (
@@ -345,8 +370,14 @@ export default function FormResponses({ form, event, responses, stats, questions
                                                 #{(responses.current_page - 1) * responses.per_page + idx + 1}
                                             </span>
                                         </div>
-                                        <div className="flex items-center gap-3 mt-0.5">
-                                            {response.email && (
+                                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5">
+                                            {form.respondent_fields?.filter(f => f.key !== 'name').map(f => (
+                                                <span key={f.key} className="flex items-center gap-1.5 text-sm text-gray-500">
+                                                    {f.key === 'email' ? <Mail className="h-3.5 w-3.5" /> : (f.key === 'phone' || f.key === 'no_hp') ? '📱' : 'ℹ️'}
+                                                    {f.key === 'email' ? (response.email || '-') : (response.custom_fields?.[f.key] || '-')}
+                                                </span>
+                                            ))}
+                                            {!form.respondent_fields?.some(f => f.key === 'email') && response.email && (
                                                 <span className="flex items-center gap-1.5 text-sm text-gray-500">
                                                     <Mail className="h-3.5 w-3.5" />
                                                     {response.email}

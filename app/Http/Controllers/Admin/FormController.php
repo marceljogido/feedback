@@ -320,6 +320,7 @@ class FormController extends Controller
                     'id' => $respondent->id,
                     'name' => $respondent->name ?? 'Anonim',
                     'email' => $respondent->email,
+                    'custom_fields' => $respondent->custom_fields ?? [],
                     'submitted_at' => $respondent->submitted_at->format('d M Y H:i'),
                     'answers' => $answers,
                 ];
@@ -341,11 +342,17 @@ class FormController extends Controller
                 ];
             });
 
+        // Get respondent fields for dynamic headers
+        $respondentFields = collect($form->respondent_fields ?? [])
+            ->filter(fn($f) => $f['enabled'] ?? false)
+            ->values();
+
         return Inertia::render('Admin/Forms/Responses', [
             'form' => [
                 'id' => $form->id,
                 'name' => $form->name,
                 'slug' => $form->slug,
+                'respondent_fields' => $respondentFields,
             ],
             'event' => [
                 'id' => $form->event->id,
@@ -407,8 +414,27 @@ class FormController extends Controller
             ->orderBy('submitted_at', 'desc')
             ->get();
 
+        // Build respondent fields
+        $respondentFields = collect($form->respondent_fields ?? [])
+            ->filter(fn($f) => $f['enabled'] ?? false);
+
         // Build headers
-        $headers = ['No', 'Nama', 'Email', 'Tanggal Submit'];
+        $headers = ['No'];
+        
+        // Add respondent field headers dynamically
+        foreach ($respondentFields as $field) {
+            $headers[] = $field['label'] ?? $field['key'];
+        }
+        
+        if (!$respondentFields->contains('key', 'name')) {
+            $headers[] = 'Nama';
+        }
+        if (!$respondentFields->contains('key', 'email')) {
+            $headers[] = 'Email';
+        }
+
+        $headers[] = 'Tanggal Submit';
+
         $questions = $form->questions;
         foreach ($questions as $question) {
             $headers[] = $question->question_text;
@@ -418,12 +444,28 @@ class FormController extends Controller
         $rows = [];
         $no = 1;
         foreach ($respondents as $respondent) {
-            $row = [
-                $no++,
-                $respondent->name ?? 'Anonim',
-                $respondent->email ?? '-',
-                $respondent->submitted_at ? $respondent->submitted_at->format('d/m/Y H:i') : '-',
-            ];
+            $row = [$no++];
+            
+            // Add custom respondent fields data
+            foreach ($respondentFields as $field) {
+                $key = $field['key'];
+                if ($key === 'name') {
+                    $row[] = $respondent->name ?? 'Anonim';
+                } elseif ($key === 'email') {
+                    $row[] = $respondent->email ?? '-';
+                } else {
+                    $row[] = $respondent->custom_fields[$key] ?? '-';
+                }
+            }
+
+            if (!$respondentFields->contains('key', 'name')) {
+                $row[] = $respondent->name ?? 'Anonim';
+            }
+            if (!$respondentFields->contains('key', 'email')) {
+                $row[] = $respondent->email ?? '-';
+            }
+
+            $row[] = $respondent->submitted_at ? $respondent->submitted_at->format('d/m/Y H:i') : '-';
 
             // Map answers by question_id for easy lookup
             $answerMap = [];
