@@ -11,7 +11,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/Components/ui/select';
-import { Star, Upload, Loader2, Check } from 'lucide-react';
+import { Star, Upload, Loader2, Check, X, Image as ImageIcon } from 'lucide-react';
 import { useState } from 'react';
 
 interface Question {
@@ -142,6 +142,7 @@ function StarRatingInput({ value, onChange }: { value: number; onChange: (v: num
 
 export default function Form({ event, form, questions, editMode = false, editToken, existingAnswers, existingRespondentData }: Props) {
     const [locale, setLocale] = useState<'id' | 'en'>(event.default_locale as 'id' | 'en');
+    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
     // Resolve assets: form-level takes priority over event-level
     const bannerImage = form.banner_image || event.banner_image;
@@ -219,17 +220,26 @@ export default function Form({ event, form, questions, editMode = false, editTok
                 </div>
 
                 {/* Banner */}
-                <div className="relative">
+                <div className="relative h-40 md:h-64 overflow-hidden">
                     {bannerImage ? (
-                        <img
-                            src={bannerImage}
-                            alt={displayTitle}
-                            className="w-full h-40 md:h-64 object-cover"
-                        />
+                        <>
+                            {/* Blurred Background Layer */}
+                            <img
+                                src={bannerImage}
+                                alt="Banner Background"
+                                className="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-50"
+                            />
+                            {/* Clean Focused Layer */}
+                            <img
+                                src={bannerImage}
+                                alt={displayTitle}
+                                className="relative w-full h-full object-contain z-10"
+                            />
+                        </>
                     ) : (
-                        <div className="w-full h-40 md:h-64 bg-gradient-to-r from-[#11224e] to-[#5c83c4] animate-in fade-in zoom-in-105 duration-1000" />
+                        <div className="w-full h-full bg-gradient-to-r from-[#11224e] to-[#5c83c4] animate-in fade-in zoom-in-105 duration-1000" />
                     )}
-                    <div className="absolute inset-0 bg-black/30 animate-in fade-in duration-1000" />
+                    <div className="absolute inset-0 bg-black/30 animate-in fade-in duration-1000 z-20" />
                     <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
                         <div className="max-w-2xl mx-auto flex items-center gap-4">
                             {logoImage && (
@@ -317,11 +327,19 @@ export default function Form({ event, form, questions, editMode = false, editTok
                                     <div className="space-y-3">
                                         {/* Question Image */}
                                         {question.image && (
-                                            <img
-                                                src={question.image.startsWith('http') ? question.image : `/storage/${question.image}`}
-                                                alt=""
-                                                className="w-full h-auto max-h-[500px] object-contain rounded-lg mb-4"
-                                            />
+                                            <div
+                                                className="relative group/qimg cursor-zoom-in mb-4"
+                                                onClick={() => setLightboxImage(question.image!.startsWith('http') ? question.image! : `/storage/${question.image}`)}
+                                            >
+                                                <img
+                                                    src={question.image.startsWith('http') ? question.image : `/storage/${question.image}`}
+                                                    alt=""
+                                                    className="w-full h-auto max-h-[500px] object-contain rounded-lg transition-opacity group-hover/qimg:opacity-90"
+                                                />
+                                                <div className="absolute top-2 right-2 bg-black/50 text-white p-2 rounded-full opacity-0 group-hover/qimg:opacity-100 transition-opacity">
+                                                    <ImageIcon className="h-5 w-5" />
+                                                </div>
+                                            </div>
                                         )}
                                         <Label className="text-base">
                                             {getQuestionText(question)}
@@ -413,11 +431,25 @@ export default function Form({ event, form, questions, editMode = false, editTok
                                                             />
                                                             <div className="flex-1">
                                                                 {option.image && (
-                                                                    <img
-                                                                        src={option.image.startsWith('http') ? option.image : `/storage/${option.image}`}
-                                                                        alt="Option"
-                                                                        className="w-full h-auto max-h-64 object-contain rounded-md border mb-2"
-                                                                    />
+                                                                    <div
+                                                                        className="relative group/optimg cursor-zoom-in"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            e.preventDefault();
+                                                                            if (option.image) setLightboxImage(option.image.startsWith('http') ? option.image : `/storage/${option.image}`);
+                                                                        }}
+                                                                    >
+                                                                        <img
+                                                                            src={option.image.startsWith('http') ? option.image : `/storage/${option.image}`}
+                                                                            alt="Option"
+                                                                            className="w-full h-auto max-h-64 object-contain rounded-md border mb-2 transition-opacity group-hover/optimg:opacity-90"
+                                                                        />
+                                                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/optimg:opacity-100 transition-opacity">
+                                                                            <div className="bg-black/50 p-2 rounded-full">
+                                                                                <ImageIcon className="h-6 w-6 text-white" />
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
                                                                 )}
                                                                 <span className="text-gray-700 relative top-[-2px]">{option.text}</span>
                                                             </div>
@@ -451,11 +483,25 @@ export default function Form({ event, form, questions, editMode = false, editTok
                                                             />
                                                             <div className="flex-1">
                                                                 {option.image && (
-                                                                    <img
-                                                                        src={option.image.startsWith('http') ? option.image : `/storage/${option.image}`}
-                                                                        alt="Option"
-                                                                        className="w-full h-auto max-h-64 object-contain rounded-md border mb-2"
-                                                                    />
+                                                                    <div
+                                                                        className="relative group/optimg cursor-zoom-in"
+                                                                        onClick={(e) => {
+                                                                            e.stopPropagation();
+                                                                            e.preventDefault();
+                                                                            if (option.image) setLightboxImage(option.image.startsWith('http') ? option.image : `/storage/${option.image}`);
+                                                                        }}
+                                                                    >
+                                                                        <img
+                                                                            src={option.image.startsWith('http') ? option.image : `/storage/${option.image}`}
+                                                                            alt="Option"
+                                                                            className="w-full h-auto max-h-64 object-contain rounded-md border mb-2 transition-opacity group-hover/optimg:opacity-90"
+                                                                        />
+                                                                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/optimg:opacity-100 transition-opacity">
+                                                                            <div className="bg-black/50 p-2 rounded-full">
+                                                                                <ImageIcon className="h-6 w-6 text-white" />
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
                                                                 )}
                                                                 <span className="text-gray-700 relative top-[-2px]">{option.text}</span>
                                                             </div>
@@ -581,6 +627,29 @@ export default function Form({ event, form, questions, editMode = false, editTok
                         />
                     </div>
                 </div>
+
+                {/* Image Lightbox */}
+                {lightboxImage && (
+                    <div
+                        className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
+                        onClick={() => setLightboxImage(null)}
+                    >
+                        <div className="relative max-w-5xl w-full h-full flex items-center justify-center">
+                            <img
+                                src={lightboxImage}
+                                alt="Preview Full"
+                                className="max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-200"
+                                onClick={(e) => e.stopPropagation()}
+                            />
+                            <button
+                                onClick={() => setLightboxImage(null)}
+                                className="absolute top-4 right-4 text-white hover:text-gray-300 p-2 bg-black/50 rounded-full transition-colors"
+                            >
+                                <X className="h-6 w-6" />
+                            </button>
+                        </div>
+                    </div>
+                )}
             </div >
         </>
     );

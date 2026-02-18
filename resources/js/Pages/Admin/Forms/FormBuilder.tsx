@@ -558,11 +558,13 @@ function SortablePreviewQuestion({
     index,
     onEdit,
     onDelete,
+    onImageClick,
 }: {
     question: Question;
     index: number;
     onEdit: () => void;
     onDelete: () => void;
+    onImageClick?: (src: string) => void;
 }) {
     const {
         attributes,
@@ -612,11 +614,23 @@ function SortablePreviewQuestion({
                     <div className="space-y-3">
                         {/* Show image if exists */}
                         {question.image && (
-                            <img
-                                src={question.image.startsWith('http') ? question.image : `/storage/${question.image}`}
-                                alt="Question image"
-                                className="w-full h-auto max-h-48 object-contain rounded-lg bg-gray-50"
-                            />
+                            <div
+                                className="relative group/img cursor-zoom-in"
+                                onClick={() => {
+                                    if (question.image) {
+                                        onImageClick?.(question.image.startsWith('http') ? question.image : `/storage/${question.image}`);
+                                    }
+                                }}
+                            >
+                                <img
+                                    src={question.image.startsWith('http') ? question.image : `/storage/${question.image}`}
+                                    alt="Question image"
+                                    className="w-full h-auto max-h-48 object-contain rounded-lg bg-gray-50 border transition-transform duration-200 group-hover/img:scale-[1.01]"
+                                />
+                                <div className="absolute top-2 right-2 bg-black/50 text-white p-1 rounded opacity-0 group-hover/img:opacity-100 transition-opacity">
+                                    🔍
+                                </div>
+                            </div>
                         )}
 
                         <Label className="text-base">
@@ -663,11 +677,23 @@ function SortablePreviewQuestion({
                                         />
                                         <div className="flex-1">
                                             {option.image && (
-                                                <img
-                                                    src={option.image.startsWith('http') ? option.image : `/storage/${option.image}`}
-                                                    alt="Option"
-                                                    className="w-24 h-24 object-contain rounded-md border mb-2 bg-white"
-                                                />
+                                                <div
+                                                    className="relative group/optimg cursor-zoom-in inline-block"
+                                                    onClick={() => {
+                                                        if (option.image) {
+                                                            onImageClick?.(option.image.startsWith('http') ? option.image : `/storage/${option.image}`);
+                                                        }
+                                                    }}
+                                                >
+                                                    <img
+                                                        src={option.image.startsWith('http') ? option.image : `/storage/${option.image}`}
+                                                        alt="Option"
+                                                        className="w-24 h-24 object-contain rounded-md border mb-2 bg-white transition-opacity group-hover/optimg:opacity-90"
+                                                    />
+                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/optimg:opacity-100 transition-opacity">
+                                                        <ImageIcon className="h-5 w-5 text-gray-400" />
+                                                    </div>
+                                                </div>
                                             )}
                                             <span className="text-gray-600 relative top-[-2px]">{option.text}</span>
                                         </div>
@@ -690,11 +716,23 @@ function SortablePreviewQuestion({
                                         />
                                         <div className="flex-1">
                                             {option.image && (
-                                                <img
-                                                    src={option.image.startsWith('http') ? option.image : `/storage/${option.image}`}
-                                                    alt="Option"
-                                                    className="w-24 h-24 object-contain rounded-md border mb-2 bg-white"
-                                                />
+                                                <div
+                                                    className="relative group/optimg cursor-zoom-in inline-block"
+                                                    onClick={() => {
+                                                        if (option.image) {
+                                                            onImageClick?.(option.image.startsWith('http') ? option.image : `/storage/${option.image}`);
+                                                        }
+                                                    }}
+                                                >
+                                                    <img
+                                                        src={option.image.startsWith('http') ? option.image : `/storage/${option.image}`}
+                                                        alt="Option"
+                                                        className="w-24 h-24 object-contain rounded-md border mb-2 bg-white transition-opacity group-hover/optimg:opacity-90"
+                                                    />
+                                                    <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover/optimg:opacity-100 transition-opacity">
+                                                        <ImageIcon className="h-5 w-5 text-gray-400" />
+                                                    </div>
+                                                </div>
                                             )}
                                             <span className="text-gray-600 relative top-[-2px]">{option.text}</span>
                                         </div>
@@ -777,6 +815,7 @@ export default function FormBuilder({ form, event, questions: initialQuestions }
 
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [lightboxImage, setLightboxImage] = useState<string | null>(null);
 
     // Dynamic Respondent Fields
     interface RespondentField {
@@ -1255,22 +1294,31 @@ export default function FormBuilder({ form, event, questions: initialQuestions }
 
                     {/* Banner Image - Clickable */}
                     <div
-                        className="relative cursor-pointer"
+                        className="relative cursor-pointer h-48 md:h-64 overflow-hidden"
                         onClick={() => bannerInputRef.current?.click()}
                     >
                         {(formBanner || event.banner_image) ? (
-                            <img
-                                src={formBanner || event.banner_image || ''}
-                                alt="Banner"
-                                className="w-full h-48 md:h-64 object-contain"
-                            />
+                            <>
+                                {/* Blurred Background Layer */}
+                                <img
+                                    src={formBanner || event.banner_image || ''}
+                                    alt="Banner Background"
+                                    className="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-50"
+                                />
+                                {/* Clean Focused Layer */}
+                                <img
+                                    src={formBanner || event.banner_image || ''}
+                                    alt="Banner"
+                                    className="relative w-full h-full object-contain z-10"
+                                />
+                            </>
                         ) : (
-                            <div className="w-full h-48 md:h-64 bg-gradient-to-r from-[#11224e] to-[#5c83c4]" />
+                            <div className="w-full h-full bg-gradient-to-r from-[#11224e] to-[#5c83c4]" />
                         )}
-                        <div className="absolute inset-0 bg-black/30" />
+                        <div className="absolute inset-0 bg-black/30 z-20" />
 
                         {/* Upload Overlay */}
-                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center z-30">
                             <div className="text-white text-center">
                                 {isUploadingBanner ? (
                                     <span>⏳ Mengupload...</span>
@@ -1493,6 +1541,7 @@ export default function FormBuilder({ form, event, questions: initialQuestions }
                                             index={index}
                                             onEdit={() => setEditingIndex(index)}
                                             onDelete={() => deleteQuestion(index)}
+                                            onImageClick={(src) => setLightboxImage(src)}
                                         />
                                     ))}
                                 </div>
@@ -1735,6 +1784,28 @@ export default function FormBuilder({ form, event, questions: initialQuestions }
                                 {editingIndex !== null ? 'Selesai Edit' : 'Tutup'}
                             </Button>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* Image Lightbox */}
+            {lightboxImage && (
+                <div
+                    className="fixed inset-0 z-[100] bg-black/90 backdrop-blur-sm flex items-center justify-center p-4 cursor-zoom-out"
+                    onClick={() => setLightboxImage(null)}
+                >
+                    <div className="relative max-w-5xl w-full h-full flex items-center justify-center">
+                        <img
+                            src={lightboxImage}
+                            alt="Preview Full"
+                            className="max-w-full max-h-full object-contain shadow-2xl rounded-lg animate-in zoom-in-95 duration-200"
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                        <button
+                            onClick={() => setLightboxImage(null)}
+                            className="absolute top-4 right-4 text-white hover:text-gray-300 p-2 bg-black/50 rounded-full transition-colors"
+                        >
+                            <X className="h-6 w-6" />
+                        </button>
                     </div>
                 </div>
             )}
