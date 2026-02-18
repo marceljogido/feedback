@@ -307,7 +307,7 @@ class FormController extends Controller
         $responses = $query->orderBy('submitted_at', 'asc')
             ->paginate(20)
             ->withQueryString()
-            ->through(function ($respondent) {
+            ->through(function ($respondent) use ($form) {
                 $answers = $respondent->answers->map(function ($answer) {
                     return [
                         'question' => $answer->question->question_text,
@@ -316,9 +316,33 @@ class FormController extends Controller
                     ];
                 });
 
+                // Resolve display name if primary name is null/Anonim
+                $displayName = $respondent->name;
+                if (!$displayName || $displayName === 'Anonim') {
+                    $customFields = $respondent->custom_fields ?? [];
+                    if (!empty($customFields)) {
+                        // Look for field labeled name/nama
+                        $formRespondentFields = collect($form->respondent_fields ?? []);
+                        $nameField = $formRespondentFields->first(function($f) {
+                            $label = strtolower($f['label'] ?? '');
+                            return $label === 'nama' || $label === 'name' || $label === 'nama lengkap';
+                        });
+                        
+                        if ($nameField && isset($customFields[$nameField['key']])) {
+                            $displayName = $customFields[$nameField['key']];
+                        } else {
+                            // Map all values and pick first non-empty
+                            $values = array_filter(array_values($customFields));
+                            if (!empty($values)) {
+                                $displayName = reset($values);
+                            }
+                        }
+                    }
+                }
+
                 return [
                     'id' => $respondent->id,
-                    'name' => $respondent->name ?? 'Anonim',
+                    'name' => $displayName ?: 'Anonim',
                     'email' => $respondent->email,
                     'custom_fields' => $respondent->custom_fields ?? [],
                     'submitted_at' => $respondent->submitted_at->format('d M Y H:i'),

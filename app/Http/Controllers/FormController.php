@@ -221,12 +221,22 @@ class FormController extends Controller
         $respondentName = $validated['name'] ?? null;
         $respondentEmail = $validated['email'] ?? null;
 
+        // Get formal field mapping from form config
+        $respondentFields = collect($form->respondent_fields ?? []);
+        
         foreach ($respondentData as $key => $value) {
-            if ($key === 'name') {
-                $respondentName = $value;
-            } elseif ($key === 'email') {
-                $respondentEmail = $value;
-            } else {
+            // Find field config to check label if key doesn't match
+            $fieldConfig = $respondentFields->firstWhere('key', $key);
+            $label = strtolower($fieldConfig['label'] ?? '');
+            
+            if ($key === 'name' || $label === 'nama' || $label === 'name' || $label === 'nama lengkap' || $label === 'full name') {
+                if (!$respondentName) $respondentName = $value;
+            } elseif ($key === 'email' || $label === 'email' || $label === 'e-mail' || ($fieldConfig['type'] ?? '') === 'email') {
+                if (!$respondentEmail) $respondentEmail = $value;
+            }
+            
+            // Always keep in custom fields too if it's not the standard key
+            if ($key !== 'name' && $key !== 'email') {
                 $customFields[$key] = $value;
             }
         }
