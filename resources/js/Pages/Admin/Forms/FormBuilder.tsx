@@ -283,7 +283,7 @@ function QuestionEditor({
                                 <img
                                     src={getImageUrl(localQuestion.image) || ''}
                                     alt="Question image"
-                                    className="w-full h-40 object-cover rounded-lg border"
+                                    className="w-full h-40 object-contain rounded-lg border bg-gray-50"
                                 />
                                 <button
                                     onClick={removeImage}
@@ -501,7 +501,7 @@ function QuestionEditor({
                                                 <img
                                                     src={getImageUrl(option.image) || ''}
                                                     alt="Option"
-                                                    className="w-full h-full object-cover rounded-md border"
+                                                    className="w-full h-full object-contain rounded-md border bg-white"
                                                 />
                                                 <button
                                                     onClick={() => {
@@ -615,7 +615,7 @@ function SortablePreviewQuestion({
                             <img
                                 src={question.image.startsWith('http') ? question.image : `/storage/${question.image}`}
                                 alt="Question image"
-                                className="w-full h-32 object-cover rounded-lg"
+                                className="w-full h-auto max-h-48 object-contain rounded-lg bg-gray-50"
                             />
                         )}
 
@@ -666,7 +666,7 @@ function SortablePreviewQuestion({
                                                 <img
                                                     src={option.image.startsWith('http') ? option.image : `/storage/${option.image}`}
                                                     alt="Option"
-                                                    className="w-24 h-24 object-cover rounded-md border mb-2"
+                                                    className="w-24 h-24 object-contain rounded-md border mb-2 bg-white"
                                                 />
                                             )}
                                             <span className="text-gray-600 relative top-[-2px]">{option.text}</span>
@@ -693,7 +693,7 @@ function SortablePreviewQuestion({
                                                 <img
                                                     src={option.image.startsWith('http') ? option.image : `/storage/${option.image}`}
                                                     alt="Option"
-                                                    className="w-24 h-24 object-cover rounded-md border mb-2"
+                                                    className="w-24 h-24 object-contain rounded-md border mb-2 bg-white"
                                                 />
                                             )}
                                             <span className="text-gray-600 relative top-[-2px]">{option.text}</span>
@@ -974,7 +974,8 @@ export default function FormBuilder({ form, event, questions: initialQuestions }
         const updated = [...questions];
         updated[index] = updatedQuestion;
         setQuestions(updated);
-        // Do not close editing mode here, only on manual close/save
+        // Automatically close editing mode after save
+        setEditingIndex(null);
     };
 
     const updateQuestionField = (index: number, field: keyof Question, value: any) => {
@@ -1261,7 +1262,7 @@ export default function FormBuilder({ form, event, questions: initialQuestions }
                             <img
                                 src={formBanner || event.banner_image || ''}
                                 alt="Banner"
-                                className="w-full h-48 md:h-64 object-cover"
+                                className="w-full h-48 md:h-64 object-contain"
                             />
                         ) : (
                             <div className="w-full h-48 md:h-64 bg-gradient-to-r from-[#11224e] to-[#5c83c4]" />
