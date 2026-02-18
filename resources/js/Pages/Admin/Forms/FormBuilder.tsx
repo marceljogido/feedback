@@ -1298,20 +1298,11 @@ export default function FormBuilder({ form, event, questions: initialQuestions }
                         onClick={() => bannerInputRef.current?.click()}
                     >
                         {(formBanner || event.banner_image) ? (
-                            <>
-                                {/* Blurred Background Layer */}
-                                <img
-                                    src={formBanner || event.banner_image || ''}
-                                    alt="Banner Background"
-                                    className="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-50"
-                                />
-                                {/* Clean Focused Layer */}
-                                <img
-                                    src={formBanner || event.banner_image || ''}
-                                    alt="Banner"
-                                    className="relative w-full h-full object-contain z-10"
-                                />
-                            </>
+                            <img
+                                src={formBanner || event.banner_image || ''}
+                                alt="Banner"
+                                className="w-full h-full object-cover"
+                            />
                         ) : (
                             <div className="w-full h-full bg-gradient-to-r from-[#11224e] to-[#5c83c4]" />
                         )}

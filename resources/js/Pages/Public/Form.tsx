@@ -222,24 +222,15 @@ export default function Form({ event, form, questions, editMode = false, editTok
                 {/* Banner */}
                 <div className="relative h-40 md:h-64 overflow-hidden">
                     {bannerImage ? (
-                        <>
-                            {/* Blurred Background Layer */}
-                            <img
-                                src={bannerImage}
-                                alt="Banner Background"
-                                className="absolute inset-0 w-full h-full object-cover blur-md scale-110 opacity-50"
-                            />
-                            {/* Clean Focused Layer */}
-                            <img
-                                src={bannerImage}
-                                alt={displayTitle}
-                                className="relative w-full h-full object-contain z-10"
-                            />
-                        </>
+                        <img
+                            src={bannerImage}
+                            alt={displayTitle}
+                            className="w-full h-full object-cover"
+                        />
                     ) : (
                         <div className="w-full h-full bg-gradient-to-r from-[#11224e] to-[#5c83c4] animate-in fade-in zoom-in-105 duration-1000" />
                     )}
-                    <div className="absolute inset-0 bg-black/30 animate-in fade-in duration-1000 z-20" />
+                    <div className="absolute inset-0 bg-black/30 animate-in fade-in duration-1000" />
                     <div className="absolute bottom-0 left-0 right-0 p-4 md:p-6">
                         <div className="max-w-2xl mx-auto flex items-center gap-4">
                             {logoImage && (
