@@ -41,9 +41,18 @@ import {
     Calendar,
     Gauge,
     Clock,
+    Scan,
 } from 'lucide-react';
 import { Link } from '@inertiajs/react';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import { QRCodeCanvas } from 'qrcode.react';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from '@/Components/ui/dialog';
 import axios from 'axios';
 import {
     DndContext,
@@ -816,6 +825,7 @@ export default function FormBuilder({ form, event, questions: initialQuestions }
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+    const [showQrDialog, setShowQrDialog] = useState(false);
 
     // Dynamic Respondent Fields
     interface RespondentField {
@@ -1180,6 +1190,19 @@ export default function FormBuilder({ form, event, questions: initialQuestions }
         alert('Link berhasil disalin!');
     };
 
+    const downloadQR = () => {
+        const canvas = document.getElementById('qr-code-canvas-builder') as HTMLCanvasElement;
+        if (canvas) {
+            const pngUrl = canvas.toDataURL('image/png');
+            const downloadLink = document.createElement('a');
+            downloadLink.href = pngUrl;
+            downloadLink.download = `qr-${form.slug}.png`;
+            document.body.appendChild(downloadLink);
+            downloadLink.click();
+            document.body.removeChild(downloadLink);
+        }
+    };
+
     const handleCloseDialog = () => {
         setIsDialogOpen(false);
         setEditingIndex(null);
@@ -1228,6 +1251,9 @@ export default function FormBuilder({ form, event, questions: initialQuestions }
                             <div className="flex items-center gap-2 flex-wrap">
                                 <Button variant="outline" size="sm" onClick={copyLink}>
                                     📋 Salin Link
+                                </Button>
+                                <Button variant="outline" size="sm" onClick={() => setShowQrDialog(true)}>
+                                    🔳 QR Code
                                 </Button>
                                 <a href={form.public_url} target="_blank" rel="noopener noreferrer">
                                     <Button variant="outline" size="sm">
@@ -1800,6 +1826,36 @@ export default function FormBuilder({ form, event, questions: initialQuestions }
                     </div>
                 </div>
             )}
+
+            {/* QR Code Dialog */}
+            <Dialog open={showQrDialog} onOpenChange={setShowQrDialog}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle>QR Code Form</DialogTitle>
+                        <DialogDescription>
+                            Scan QR Code ini untuk akses langsung ke kuesioner.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="flex flex-col items-center justify-center space-y-6 py-4">
+                        <div className="p-4 bg-white border rounded-lg shadow-sm">
+                            <QRCodeCanvas
+                                id="qr-code-canvas-builder"
+                                value={form.public_url}
+                                size={256}
+                                level={'H'}
+                                includeMargin={true}
+                            />
+                        </div>
+                        <div className="text-center text-sm text-muted-foreground">
+                            <p className="font-medium mb-1">{form.name}</p>
+                            <p className="text-xs break-all">{form.public_url}</p>
+                        </div>
+                        <Button onClick={downloadQR} className="w-full sm:w-auto bg-[#f17720] hover:bg-[#d96a1a]">
+                            <Scan className="mr-2 h-4 w-4" /> Download PNG
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </AdminLayout>
     );
 }
