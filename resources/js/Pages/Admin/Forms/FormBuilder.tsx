@@ -454,7 +454,7 @@ function QuestionEditor({
                         </div>
                     )}
 
-                    {localQuestion.type === 'multiple_choice' && (
+                    {['multiple_choice', 'dropdown', 'checkbox'].includes(localQuestion.type) && (
                         <div className="space-y-3">
                             <div className="flex justify-between items-center">
                                 <Label>Opsi Jawaban</Label>
@@ -472,7 +472,17 @@ function QuestionEditor({
                                                     newOptions[index].text = e.target.value;
                                                     handleUpdate('options', newOptions);
                                                 }}
-                                                placeholder={`Opsi ${index + 1}`}
+                                                placeholder={`Opsi ${index + 1} (ID)`}
+                                                className="flex-1"
+                                            />
+                                            <Input
+                                                value={option.text_en || ''}
+                                                onChange={(e) => {
+                                                    const newOptions = normalizeOptions(localQuestion.options);
+                                                    newOptions[index].text_en = e.target.value;
+                                                    handleUpdate('options', newOptions);
+                                                }}
+                                                placeholder={`Option ${index + 1} (EN)`}
                                                 className="flex-1"
                                             />
 
@@ -540,6 +550,67 @@ function QuestionEditor({
                             >
                                 + Tambah Opsi
                             </Button>
+                        </div>
+                    )}
+
+                    {localQuestion.type === 'linear_scale' && (
+                        <div className="space-y-3 p-3 bg-gray-50 rounded-lg border">
+                            <Label className="text-sm font-medium">Pengaturan Skala</Label>
+                            <div className="grid grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-500">Nilai Minimum</Label>
+                                    <select
+                                        value={String((localQuestion.options as any)?.min ?? 1)}
+                                        onChange={(e) => {
+                                            const opts = (localQuestion.options as any) || {};
+                                            handleUpdate('options', { ...opts, min: parseInt(e.target.value) });
+                                        }}
+                                        className="w-full px-3 py-2 border rounded-md text-sm"
+                                    >
+                                        <option value="0">0</option>
+                                        <option value="1">1</option>
+                                    </select>
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-500">Nilai Maksimum</Label>
+                                    <select
+                                        value={String((localQuestion.options as any)?.max ?? 5)}
+                                        onChange={(e) => {
+                                            const opts = (localQuestion.options as any) || {};
+                                            handleUpdate('options', { ...opts, max: parseInt(e.target.value) });
+                                        }}
+                                        className="w-full px-3 py-2 border rounded-md text-sm"
+                                    >
+                                        {[2, 3, 4, 5, 6, 7, 8, 9, 10].map(n => (
+                                            <option key={n} value={String(n)}>{n}</option>
+                                        ))}
+                                    </select>
+                                </div>
+                            </div>
+                            <div className="space-y-2">
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-500">Label Minimum (opsional)</Label>
+                                    <Input
+                                        value={(localQuestion.options as any)?.min_label || ''}
+                                        onChange={(e) => {
+                                            const opts = (localQuestion.options as any) || {};
+                                            handleUpdate('options', { ...opts, min_label: e.target.value });
+                                        }}
+                                        placeholder="Contoh: Sangat Tidak Setuju"
+                                    />
+                                </div>
+                                <div className="space-y-1">
+                                    <Label className="text-xs text-gray-500">Label Maksimum (opsional)</Label>
+                                    <Input
+                                        value={(localQuestion.options as any)?.max_label || ''}
+                                        onChange={(e) => {
+                                            const opts = (localQuestion.options as any) || {};
+                                            handleUpdate('options', { ...opts, max_label: e.target.value });
+                                        }}
+                                        placeholder="Contoh: Sangat Setuju"
+                                    />
+                                </div>
+                            </div>
                         </div>
                     )}
                 </div>
@@ -1017,6 +1088,7 @@ export default function FormBuilder({ form, event, questions: initialQuestions }
         };
         setQuestions([...questions, newQuestion]);
         setEditingIndex(questions.length);
+        setIsDialogOpen(false); // Close type selection, let QuestionEditor take over
     };
 
     const updateQuestion = (index: number, updatedQuestion: Question) => {
@@ -1600,205 +1672,44 @@ export default function FormBuilder({ form, event, questions: initialQuestions }
                     </div>
                 </div>
             </div>
-            {/* Question Type Dialog */}
+            {/* Question Type Selection Dialog */}
             {isDialogOpen && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl shadow-lg w-full max-w-lg">
                         <div className="p-6 border-b flex items-center justify-between">
                             <h3 className="text-lg font-semibold">
-                                {editingIndex !== null ? 'Edit Pertanyaan' : 'Tambah Pertanyaan'}
+                                ➕ Tambah Pertanyaan
                             </h3>
                             <button onClick={handleCloseDialog} className="text-gray-400 hover:text-gray-600">
                                 <X className="h-5 w-5" />
                             </button>
                         </div>
                         <div className="p-6 overflow-y-auto max-h-[70vh]">
-                            {editingIndex === null ? (
-                                <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-                                    {questionTypes.map((type) => (
-                                        <button
-                                            key={type.id}
-                                            onClick={() => handleAddQuestion(type.id as QuestionType)}
-                                            className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-dashed border-gray-200 hover:border-blue-500 hover:bg-blue-50/50 transition-all group text-left"
-                                        >
-                                            <div className="p-3 bg-gray-100 rounded-lg group-hover:bg-blue-100 text-gray-600 group-hover:text-blue-600 transition-colors">
-                                                <type.icon className="h-6 w-6" />
-                                            </div>
-                                            <div className="text-center">
-                                                <div className="font-medium text-gray-900 group-hover:text-blue-700">
-                                                    {type.label}
-                                                </div>
-                                                <div className="text-xs text-gray-500 mt-1 line-clamp-2">
-                                                    {type.description}
-                                                </div>
-                                            </div>
-                                        </button>
-                                    ))}
-                                </div>
-                            ) : (
-                                <div className="space-y-6">
-                                    {/* Question Text */}
-                                    <div className="space-y-4">
-                                        <div className="space-y-2">
-                                            <Label>Pertanyaan (ID) <span className="text-red-500">*</span></Label>
-                                            <Input
-                                                value={questions[editingIndex].question_text}
-                                                onChange={(e) => updateQuestionField(editingIndex, 'question_text', e.target.value)}
-                                                placeholder="Contoh: Apa pendapat Anda tentang acara ini?"
-                                            />
+                            <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                {questionTypes.map((type) => (
+                                    <button
+                                        key={type.id}
+                                        onClick={() => handleAddQuestion(type.id as QuestionType)}
+                                        className="flex flex-col items-center gap-3 p-4 rounded-xl border-2 border-dashed border-gray-200 hover:border-blue-500 hover:bg-blue-50/50 transition-all group text-left"
+                                    >
+                                        <div className="p-3 bg-gray-100 rounded-lg group-hover:bg-blue-100 text-gray-600 group-hover:text-blue-600 transition-colors">
+                                            <type.icon className="h-6 w-6" />
                                         </div>
-                                        <div className="space-y-2">
-                                            <Label>Pertanyaan (EN) <span className="text-gray-400 text-xs">(Opsional)</span></Label>
-                                            <Input
-                                                value={questions[editingIndex].question_text_en || ''}
-                                                onChange={(e) => updateQuestionField(editingIndex, 'question_text_en', e.target.value)}
-                                                placeholder="Example: What do you think about this event?"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    {/* Question Image */}
-                                    <div className="space-y-2">
-                                        <Label>Gambar Pertanyaan <span className="text-gray-400 text-xs">(Opsional)</span></Label>
-                                        <p className="text-xs text-gray-500 mb-2">
-                                            Format: JPG, PNG, GIF. Max 5MB. Rekomendasi lebar min 800px (Landscape).
-                                        </p>
-                                        <div className="flex items-start gap-4">
-                                            {questions[editingIndex].image && (
-                                                <div className="relative group border rounded-lg overflow-hidden w-24 h-24 shrink-0 bg-gray-50">
-                                                    <img
-                                                        src={`/storage/${questions[editingIndex].image}`}
-                                                        alt="Question"
-                                                        className="w-full h-full object-contain"
-                                                    />
-                                                    <button
-                                                        onClick={() => deleteQuestionImage(editingIndex)}
-                                                        className="absolute top-1 right-1 bg-white/90 p-1 rounded-full text-red-600 hover:text-red-700 hover:bg-white shadow-sm opacity-0 group-hover:opacity-100 transition-opacity"
-                                                    >
-                                                        <Trash2 className="h-3 w-3" />
-                                                    </button>
-                                                </div>
-                                            )}
-                                            <div className="flex-1">
-                                                <Input
-                                                    type="file"
-                                                    accept="image/*"
-                                                    onChange={(e) => {
-                                                        const file = e.target.files?.[0];
-                                                        if (file) handleImageUpload(file, editingIndex);
-                                                    }}
-                                                    className="cursor-pointer file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-                                                />
-                                                <p className="text-xs text-gray-500 mt-2">
-                                                    Upload gambar baru untuk mengganti yang lama.
-                                                </p>
+                                        <div className="text-center">
+                                            <div className="font-medium text-gray-900 group-hover:text-blue-700">
+                                                {type.label}
+                                            </div>
+                                            <div className="text-xs text-gray-500 mt-1 line-clamp-2">
+                                                {type.description}
                                             </div>
                                         </div>
-                                    </div>
-
-                                    {/* Options for Multiple Choice / Rating / Dropdown */}
-                                    {['multiple_choice', 'dropdown', 'checkbox'].includes(questions[editingIndex].type) && (
-                                        <div className="space-y-3 pt-4 border-t">
-                                            <div className="flex items-center justify-between">
-                                                <Label>Pilihan Jawaban</Label>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    onClick={() => addOption(editingIndex)}
-                                                >
-                                                    <Plus className="h-4 w-4 mr-2" />
-                                                    Tambah Pilihan
-                                                </Button>
-                                            </div>
-
-                                            <p className="text-xs text-gray-500 mb-2">
-                                                Rekomendasi gambar opsi: Rasio 1:1 (Square) atau Landscape, lebar min 500px.
-                                            </p>
-
-                                            <div className="space-y-3">
-                                                {normalizeOptions(questions[editingIndex].options).map((option, optIndex) => (
-                                                    <div key={optIndex} className="p-3 border rounded-lg bg-gray-50 space-y-3">
-                                                        <div className="flex gap-2 items-start">
-                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 flex-1">
-                                                                <Input
-                                                                    value={option.text}
-                                                                    onChange={(e) => updateOption(editingIndex, optIndex, { text: e.target.value })}
-                                                                    placeholder={`Pilihan ${optIndex + 1} (ID)`}
-                                                                />
-                                                                <Input
-                                                                    value={option.text_en || ''}
-                                                                    onChange={(e) => updateOption(editingIndex, optIndex, { text_en: e.target.value })}
-                                                                    placeholder={`Option ${optIndex + 1} (EN)`}
-                                                                />
-                                                            </div>
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="icon"
-                                                                onClick={() => removeOption(editingIndex, optIndex)}
-                                                                className="text-red-500 hover:text-red-700 shrink-0"
-                                                            >
-                                                                <Trash2 className="h-4 w-4" />
-                                                            </Button>
-                                                        </div>
-
-                                                        {/* Option Image Upload */}
-                                                        <div className="flex items-center gap-3 pl-1">
-                                                            {option.image ? (
-                                                                <div className="relative group w-12 h-12 border rounded overflow-hidden bg-white shrink-0">
-                                                                    <img
-                                                                        src={`/storage/${option.image}`}
-                                                                        alt="Option"
-                                                                        className="w-full h-full object-contain"
-                                                                    />
-                                                                    <button
-                                                                        onClick={() => {
-                                                                            // Delete option image logic here if needed
-                                                                            // For now, allow replacing directly
-                                                                        }}
-                                                                        className="absolute inset-0 bg-black/50 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity text-xs"
-                                                                    >
-                                                                        Ganti
-                                                                    </button>
-                                                                </div>
-                                                            ) : (
-                                                                <div className="w-12 h-12 border border-dashed rounded flex items-center justify-center text-gray-400 bg-white shrink-0">
-                                                                    <ImageIcon className="h-5 w-5" />
-                                                                </div>
-                                                            )}
-
-                                                            <div className="flex-1">
-                                                                <Input
-                                                                    type="file"
-                                                                    accept="image/*"
-                                                                    className="h-9 py-1 text-sm file:mr-2 file:py-1 file:px-2 file:text-xs"
-                                                                    onChange={(e) => {
-                                                                        const file = e.target.files?.[0];
-                                                                        if (file) handleOptionImageUpload(file, editingIndex, optIndex);
-                                                                    }}
-                                                                />
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Settings Toggle */}
-                                    <div className="flex items-center space-x-2 pt-4 border-t">
-                                        <Switch
-                                            id="required"
-                                            checked={questions[editingIndex].is_required}
-                                            onCheckedChange={(checked) => updateQuestionField(editingIndex, 'is_required', checked)}
-                                        />
-                                        <Label htmlFor="required">Wajib Diisi</Label>
-                                    </div>
-                                </div>
-                            )}
+                                    </button>
+                                ))}
+                            </div>
                         </div>
                         <div className="p-6 border-t bg-gray-50 rounded-b-xl flex justify-end gap-3">
                             <Button variant="outline" onClick={handleCloseDialog}>
-                                {editingIndex !== null ? 'Selesai Edit' : 'Tutup'}
+                                Tutup
                             </Button>
                         </div>
                     </div>
