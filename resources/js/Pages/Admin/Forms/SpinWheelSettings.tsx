@@ -130,7 +130,7 @@ export default function SpinWheelSettings({ form, event }: Props) {
         }
     };
 
-    const uploadSound = async (type: 'spin' | 'stop' | 'win', file: File) => {
+    const uploadSound = async (type: 'spin' | 'bgm' | 'win', file: File) => {
         const formData = new FormData();
         formData.append('sound', file);
         formData.append('type', type);
