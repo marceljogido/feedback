@@ -20,6 +20,10 @@ interface Response {
     custom_fields: { [key: string]: string };
     submitted_at: string;
     answers: Answer[];
+    spin_result_id?: number | null;
+    spin_prize?: string | null;
+    spin_phone?: string | null;
+    spin_status?: string | null;
 }
 
 interface Form {
@@ -27,6 +31,7 @@ interface Form {
     name: string;
     slug: string;
     respondent_fields: Array<{ key: string; label: string; type: string }>;
+    spin_wheel_enabled?: boolean;
 }
 
 interface Event {
@@ -263,6 +268,13 @@ export default function FormResponses({ form, event, responses, stats, questions
                                                 {q.question_text}
                                             </th>
                                         ))}
+                                        {form.spin_wheel_enabled && (
+                                            <>
+                                                <th className="px-6 py-4 whitespace-nowrap">🎁 Hadiah</th>
+                                                <th className="px-6 py-4 whitespace-nowrap">📱 No HP</th>
+                                                <th className="px-6 py-4 whitespace-nowrap">Status</th>
+                                            </>
+                                        )}
                                         <th className="px-6 py-4 text-right whitespace-nowrap sticky right-0 bg-gray-50 shadow-[-5px_0_10px_-5px_rgba(0,0,0,0.1)]">Aksi</th>
                                     </tr>
                                 </thead>
@@ -324,6 +336,42 @@ export default function FormResponses({ form, event, responses, stats, questions
                                                     </td>
                                                 );
                                             })}
+                                            {form.spin_wheel_enabled && (
+                                                <>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        {response.spin_prize ? (
+                                                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-xs font-medium">
+                                                                🎁 {response.spin_prize}
+                                                            </span>
+                                                        ) : <span className="text-gray-300">-</span>}
+                                                    </td>
+                                                    <td className="px-6 py-4 text-gray-700 whitespace-nowrap">
+                                                        {response.spin_phone || <span className="text-gray-300">-</span>}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        {response.spin_result_id ? (
+                                                            <select
+                                                                value={response.spin_status || 'won'}
+                                                                onChange={(e) => {
+                                                                    router.patch(route('admin.spin-results.update-status', response.spin_result_id!), {
+                                                                        status: e.target.value,
+                                                                    }, { preserveScroll: true });
+                                                                }}
+                                                                className={`text-xs px-2 py-1 rounded-full border-0 font-medium cursor-pointer focus:ring-2 focus:ring-offset-1 ${response.spin_status === 'claimed' ? 'bg-blue-100 text-blue-700 focus:ring-blue-300' :
+                                                                        response.spin_status === 'expired' ? 'bg-red-100 text-red-700 focus:ring-red-300' :
+                                                                            'bg-green-100 text-green-700 focus:ring-green-300'
+                                                                    }`}
+                                                            >
+                                                                <option value="won">🟢 Menang</option>
+                                                                <option value="claimed">🔵 Diklaim</option>
+                                                                <option value="expired">🔴 Kedaluwarsa</option>
+                                                            </select>
+                                                        ) : (
+                                                            <span className="text-gray-300">-</span>
+                                                        )}
+                                                    </td>
+                                                </>
+                                            )}
                                             <td className="px-6 py-4 text-right whitespace-nowrap sticky right-0 bg-white shadow-[-5px_0_10px_-5px_rgba(0,0,0,0.1)]">
                                                 <button
                                                     onClick={() => {

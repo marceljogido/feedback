@@ -178,7 +178,10 @@ export default function Form({ event, form, questions, editMode = false, editTok
         } else {
             post(route('form.submit', form.slug), {
                 preserveScroll: true,
-                onSuccess: () => {
+                onSuccess: (page: any) => {
+                    // If backend redirected to spin wheel, Inertia already navigated there
+                    // Only redirect to thank you if we're still on the form page
+                    if (page?.component === 'Public/SpinWheel') return;
                     setSubmitSuccess(true);
                     setTimeout(() => {
                         window.location.href = route('form.thankyou', form.slug);
@@ -209,12 +212,12 @@ export default function Form({ event, form, questions, editMode = false, editTok
                     <Select value={locale} onValueChange={(value: 'id' | 'en') => setLocale(value)}>
                         <SelectTrigger className="w-[140px] bg-white/20 border-white/30 text-white hover:bg-white/30">
                             <SelectValue>
-                                {locale === 'id' ? '🇮🇩 Indonesia' : '🇬🇧 English'}
+                                {locale === 'id' ? '🇮🇩 ID' : 'EN'}
                             </SelectValue>
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="id">🇮🇩 Indonesia</SelectItem>
-                            <SelectItem value="en">🇬🇧 English</SelectItem>
+                            <SelectItem value="id">🇮🇩 ID</SelectItem>
+                            <SelectItem value="en">EN</SelectItem>
                         </SelectContent>
                     </Select>
                 </div>

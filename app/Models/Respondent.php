@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Respondent extends Model
 {
@@ -48,5 +49,13 @@ class Respondent extends Model
     public function answers(): HasMany
     {
         return $this->hasMany(Answer::class);
+    }
+
+    /**
+     * Get the spin result for the respondent.
+     */
+    public function spinResult(): HasOne
+    {
+        return $this->hasOne(SpinResult::class);
     }
 }

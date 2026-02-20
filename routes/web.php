@@ -23,6 +23,8 @@ Route::get('/', function () {
 Route::get('/form/{slug}', [FormController::class, 'show'])->name('form.show');
 Route::post('/form/{slug}', [FormController::class, 'submit'])->name('form.submit');
 Route::get('/form/{slug}/thankyou', [FormController::class, 'thankyou'])->name('form.thankyou');
+Route::get('/form/{slug}/spin/{token}', [FormController::class, 'spinPage'])->name('form.spin.page');
+Route::post('/form/{slug}/spin', [FormController::class, 'spin'])->name('form.spin');
 Route::get('/form/{slug}/edit/{token}', [FormController::class, 'edit'])->name('form.edit');
 Route::put('/form/{slug}/edit/{token}', [FormController::class, 'update'])->name('form.update');
 
@@ -73,6 +75,13 @@ Route::middleware(['auth', 'verified'])->prefix('admin')->name('admin.')->group(
     Route::post('/forms/{form}/upload-logo', [AdminFormController::class, 'uploadLogo'])->name('forms.upload-logo');
     Route::post('/forms/{form}/update-header', [AdminFormController::class, 'updateHeader'])->name('forms.update-header');
     Route::post('/forms/{form}/update-collect-settings', [AdminFormController::class, 'updateCollectSettings'])->name('forms.update-collect-settings');
+
+    // Spin Wheel Management
+    Route::post('/forms/{form}/spin-settings', [AdminFormController::class, 'saveSpinWheelSettings'])->name('forms.spin-settings.save');
+    Route::get('/forms/{form}/spin-wheel', [AdminFormController::class, 'spinWheelPage'])->name('forms.spin-wheel');
+    Route::post('/forms/upload-prize-image', [AdminFormController::class, 'uploadPrizeImage'])->name('forms.upload-prize-image');
+    Route::post('/forms/upload-spin-sound', [AdminFormController::class, 'uploadSpinSound'])->name('forms.upload-spin-sound');
+    Route::patch('/spin-results/{spinResult}/status', [AdminFormController::class, 'updateSpinResultStatus'])->name('spin-results.update-status');
 
     // All Responses (separate page)
     Route::get('/responses', [EventController::class, 'allResponses'])->name('responses.index');

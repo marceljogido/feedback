@@ -454,4 +454,3 @@ export default function EditForm({ form, event }: Props) {
         </AdminLayout>
     );
 }
-

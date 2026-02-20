@@ -1342,6 +1342,11 @@ export default function FormBuilder({ form, event, questions: initialQuestions }
                                         ⚙️ Pengaturan Form
                                     </Button>
                                 </Link>
+                                <Link href={route('admin.forms.spin-wheel', form.id)}>
+                                    <Button variant="outline" size="sm">
+                                        🎡 Spin Wheel
+                                    </Button>
+                                </Link>
                             </div>
 
                             {/* Right Actions */}

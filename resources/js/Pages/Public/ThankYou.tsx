@@ -23,6 +23,8 @@ export default function ThankYou({ event, form }: Props) {
     const flash = (props as any).flash || {};
     const editToken = flash.edit_token;
     const wasEdited = flash.edited;
+    const alreadySpun = flash.already_spun;
+    const spinPrize = flash.spin_prize;
 
     const editUrl = editToken && form?.slug
         ? `/form/${form.slug}/edit/${editToken}`
@@ -43,6 +45,15 @@ export default function ThankYou({ event, form }: Props) {
                     )}
 
                     <div className="bg-white rounded-2xl shadow-2xl p-8 md:p-12 max-w-md">
+                        {alreadySpun && spinPrize && (
+                            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-center">
+                                <p className="text-sm text-green-800">
+                                    🎁 Anda sudah memenangkan: <strong>{spinPrize}</strong>
+                                </p>
+                                <p className="text-xs text-green-600 mt-1">Tim kami akan menghubungi Anda.</p>
+                            </div>
+                        )}
+
                         <div className="mb-6">
                             <CheckCircle className="h-20 w-20 mx-auto text-green-500" />
                         </div>

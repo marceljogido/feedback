@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Answer;
 use App\Models\Form;
+use App\Models\Prize;
 use App\Models\Respondent;
+use App\Models\SpinResult;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -159,6 +161,13 @@ class FormController extends Controller
             'answers' => 'required|array',
         ];
 
+        // Build custom attribute names so validation errors show field labels
+        $attributes = [];
+        foreach ($enabledFields as $field) {
+            $key = 'respondent_data.' . $field['key'];
+            $attributes[$key] = $field['label'] ?? $field['key'];
+        }
+
         // Add dynamic respondent field validation
         foreach ($enabledFields as $field) {
             $key = 'respondent_data.' . $field['key'];
@@ -181,7 +190,8 @@ class FormController extends Controller
 
         foreach ($form->questions as $question) {
             $key = "answers.{$question->id}";
-            
+            $attributes[$key] = $question->question; // Use question text as label
+
             if ($question->is_required) {
                 $rules[$key] = match ($question->type) {
                     'rating' => 'required|integer|min:1|max:5',
@@ -213,7 +223,7 @@ class FormController extends Controller
             }
         }
 
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, [], $attributes);
 
         // Extract respondent data
         $respondentData = $validated['respondent_data'] ?? [];
@@ -248,7 +258,7 @@ class FormController extends Controller
             'email' => $respondentEmail,
             'custom_fields' => !empty($customFields) ? $customFields : null,
             'ip_address' => $request->ip(),
-            'edit_token' => $form->allow_edit ? Str::random(48) : null,
+            'edit_token' => ($form->allow_edit || $form->spin_wheel_enabled) ? Str::random(48) : null,
         ]);
 
         // Store answers
@@ -278,7 +288,16 @@ class FormController extends Controller
             Answer::create($answerData);
         }
 
-        // Return success response with edit token if allowed
+        // Return success response
+        if ($form->spin_wheel_enabled && $form->prizes()->available()->exists()) {
+            // Redirect to spin wheel page
+            return redirect()->route('form.spin.page', [
+                'slug' => $form->slug,
+                'token' => $respondent->edit_token,
+            ]);
+        }
+
+        // Normal flow: redirect back with success
         if ($form->allow_edit && $respondent->edit_token) {
             return back()->with([
                 'success' => true,
@@ -310,6 +329,159 @@ class FormController extends Controller
                 'thank_you_button_text' => $form->thank_you_button_text,
                 'thank_you_button_url' => $form->thank_you_button_url,
             ],
+        ]);
+    }
+
+    /**
+     * Display spin wheel page.
+     */
+    public function spinPage(string $slug, string $token): Response|RedirectResponse
+    {
+        $form = Form::with(['event', 'prizes' => function ($q) {
+            $q->available()->orderBy('sort_order');
+        }])->where('slug', $slug)->firstOrFail();
+
+        if (!$form->spin_wheel_enabled) {
+            return redirect()->route('form.thankyou', $slug);
+        }
+
+        // Find respondent by token
+        $respondent = Respondent::where('form_id', $form->id)
+            ->where('edit_token', $token)
+            ->first();
+
+        if (!$respondent) {
+            return redirect()->route('form.thankyou', $slug);
+        }
+
+        // Check if already spun
+        $existingResult = SpinResult::where('respondent_id', $respondent->id)->first();
+        if ($existingResult) {
+            return redirect()->route('form.thankyou', $slug)
+                ->with('already_spun', true)
+                ->with('spin_prize', $existingResult->prize ? $existingResult->prize->name : null);
+        }
+
+        return Inertia::render('Public/SpinWheel', [
+            'event' => [
+                'title' => $form->event->title,
+                'logo_image' => $form->event->logo_image ? Storage::url($form->event->logo_image) : null,
+            ],
+            'form' => [
+                'slug' => $form->slug,
+                'spin_wheel_title' => $form->spin_wheel_title ?? 'Putar & Dapatkan Hadiah!',
+                'spin_wheel_btn_text' => $form->spin_wheel_btn_text ?? 'PUTAR!',
+                'spin_wheel_btn_color' => $form->spin_wheel_btn_color ?? '#f17720',
+                'spin_wheel_pointer_color' => $form->spin_wheel_pointer_color ?? '#e74c3c',
+                'spin_wheel_sound_spin' => $form->spin_wheel_sound_spin ? Storage::url($form->spin_wheel_sound_spin) : null,
+                'spin_wheel_sound_bgm' => $form->spin_wheel_sound_bgm ? Storage::url($form->spin_wheel_sound_bgm) : null,
+                'spin_wheel_sound_win' => $form->spin_wheel_sound_win ? Storage::url($form->spin_wheel_sound_win) : null,
+                'spin_wheel_sound_bgm_enabled' => (bool) $form->spin_wheel_sound_bgm_enabled,
+                'spin_wheel_sound_spin_enabled' => (bool) $form->spin_wheel_sound_spin_enabled,
+                'spin_wheel_sound_win_enabled' => (bool) $form->spin_wheel_sound_win_enabled,
+                'spin_wheel_result_message' => $form->spin_wheel_result_message,
+            ],
+            'prizes' => $form->prizes->map(function ($prize) {
+                return [
+                    'id' => $prize->id,
+                    'name' => $prize->name,
+                    'name_en' => $prize->name_en,
+                    'image' => $prize->image ? Storage::url($prize->image) : null,
+                    'color' => $prize->color,
+                    'probability' => (float) $prize->probability,
+                ];
+            }),
+            'respondent_id' => $respondent->id,
+            'token' => $token,
+        ]);
+    }
+
+    /**
+     * Handle spin action — determine prize with weighted random.
+     */
+    public function spin(string $slug, Request $request)
+    {
+        $form = Form::with(['prizes' => function ($q) {
+            $q->available()->orderBy('sort_order');
+        }])->where('slug', $slug)->firstOrFail();
+
+        if (!$form->spin_wheel_enabled) {
+            return response()->json(['error' => 'Spin wheel tidak aktif.'], 403);
+        }
+
+        $request->validate([
+            'respondent_id' => 'required|integer|exists:respondents,id',
+            'phone_number' => 'required|string|min:8|max:20',
+        ]);
+
+        $respondentId = $request->respondent_id;
+
+        // Check: respondent already spun?
+        if (SpinResult::where('respondent_id', $respondentId)->exists()) {
+            return response()->json(['error' => 'Anda sudah memutar roda.'], 409);
+        }
+
+        // Check: phone number already claimed in this form?
+        $phoneUsed = SpinResult::where('phone_number', $request->phone_number)
+            ->whereHas('respondent', function ($q) use ($form) {
+                $q->where('form_id', $form->id);
+            })
+            ->exists();
+
+        if ($phoneUsed) {
+            return response()->json(['error' => 'Nomor HP ini sudah pernah digunakan untuk klaim hadiah.'], 409);
+        }
+
+        $prizes = $form->prizes;
+
+        if ($prizes->isEmpty()) {
+            return response()->json(['error' => 'Tidak ada hadiah tersedia.'], 404);
+        }
+
+        // Weighted random selection
+        $totalProbability = $prizes->sum('probability');
+        if ($totalProbability <= 0) {
+            return response()->json(['error' => 'Konfigurasi hadiah tidak valid.'], 500);
+        }
+
+        $random = mt_rand(0, (int) ($totalProbability * 100)) / 100;
+        $cumulative = 0;
+        $wonPrize = null;
+
+        foreach ($prizes as $prize) {
+            $cumulative += (float) $prize->probability;
+            if ($random <= $cumulative) {
+                $wonPrize = $prize;
+                break;
+            }
+        }
+
+        // Fallback to last prize
+        if (!$wonPrize) {
+            $wonPrize = $prizes->last();
+        }
+
+        // Update won count
+        $wonPrize->increment('won_count');
+
+        // Create spin result
+        $spinResult = SpinResult::create([
+            'respondent_id' => $respondentId,
+            'prize_id' => $wonPrize->id,
+            'phone_number' => $request->phone_number,
+            'status' => 'won',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'prize' => [
+                'id' => $wonPrize->id,
+                'name' => $wonPrize->name,
+                'name_en' => $wonPrize->name_en,
+                'image' => $wonPrize->image ? Storage::url($wonPrize->image) : null,
+                'color' => $wonPrize->color,
+            ],
+            'result_message' => $form->spin_wheel_result_message ?? 'Tim kami akan menghubungi Anda untuk proses klaim hadiah.',
         ]);
     }
 
@@ -431,8 +603,12 @@ class FormController extends Controller
             'answers' => 'required|array',
         ];
 
+        // Build custom attribute names so validation errors show field labels
+        $attributes = [];
+
         foreach ($enabledFields as $field) {
             $key = 'respondent_data.' . $field['key'];
+            $attributes[$key] = $field['label'] ?? $field['key'];
             $isRequired = $field['required'] ?? true;
             $prefix = $isRequired ? 'required' : 'nullable';
             if (($field['type'] ?? 'text') === 'email') {
@@ -451,6 +627,8 @@ class FormController extends Controller
 
         foreach ($form->questions as $question) {
             $key = "answers.{$question->id}";
+            $attributes[$key] = $question->question;
+
             if ($question->is_required) {
                 $rules[$key] = match ($question->type) {
                     'rating' => 'required|integer|min:1|max:5',
@@ -481,7 +659,7 @@ class FormController extends Controller
             }
         }
 
-        $validated = $request->validate($rules);
+        $validated = $request->validate($rules, [], $attributes);
 
         // Update respondent data
         $respondentData = $validated['respondent_data'] ?? [];

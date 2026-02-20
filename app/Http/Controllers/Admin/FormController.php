@@ -6,9 +6,12 @@ use App\Http\Controllers\Controller;
 use App\Models\Event;
 use App\Models\Form;
 use App\Models\FormQuestion;
+use App\Models\Prize;
 use App\Models\Respondent;
+use App\Models\SpinResult;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -88,6 +91,8 @@ class FormController extends Controller
      */
     public function edit(Form $form): Response
     {
+        $form->load('prizes');
+
         return Inertia::render('Admin/Forms/Edit', [
             'form' => [
                 'id' => $form->id,
@@ -99,6 +104,34 @@ class FormController extends Controller
                 'closes_at' => $form->closes_at?->format('Y-m-d\TH:i'),
                 'allow_edit' => $form->allow_edit,
                 'public_url' => url("/form/{$form->slug}"),
+                // Spin Wheel
+                'spin_wheel_enabled' => $form->spin_wheel_enabled,
+                'spin_wheel_title' => $form->spin_wheel_title,
+                'spin_wheel_btn_text' => $form->spin_wheel_btn_text ?? 'PUTAR!',
+                'spin_wheel_btn_color' => $form->spin_wheel_btn_color ?? '#f17720',
+                'spin_wheel_pointer_color' => $form->spin_wheel_pointer_color ?? '#e74c3c',
+                'spin_wheel_sound_spin' => $form->spin_wheel_sound_spin ? Storage::url($form->spin_wheel_sound_spin) : null,
+                'spin_wheel_sound_bgm' => $form->spin_wheel_sound_bgm ? Storage::url($form->spin_wheel_sound_bgm) : null,
+                'spin_wheel_sound_win' => $form->spin_wheel_sound_win ? Storage::url($form->spin_wheel_sound_win) : null,
+                'spin_wheel_sound_bgm_enabled' => (bool) $form->spin_wheel_sound_bgm_enabled,
+                'spin_wheel_sound_spin_enabled' => (bool) $form->spin_wheel_sound_spin_enabled,
+                'spin_wheel_sound_win_enabled' => (bool) $form->spin_wheel_sound_win_enabled,
+                'spin_wheel_result_message' => $form->spin_wheel_result_message,
+                'prizes' => $form->prizes->map(function ($prize) {
+                    return [
+                        'id' => $prize->id,
+                        'name' => $prize->name,
+                        'name_en' => $prize->name_en,
+                        'image' => $prize->image ? Storage::url($prize->image) : null,
+                        'image_path' => $prize->image,
+                        'color' => $prize->color,
+                        'probability' => (float) $prize->probability,
+                        'stock' => $prize->stock,
+                        'won_count' => $prize->won_count,
+                        'is_active' => $prize->is_active,
+                        'sort_order' => $prize->sort_order,
+                    ];
+                }),
             ],
             'event' => [
                 'id' => $form->event->id,
@@ -289,7 +322,7 @@ class FormController extends Controller
      */
     public function responses(Request $request, Form $form): Response
     {
-        $query = $form->respondents()->with(['answers.question']);
+        $query = $form->respondents()->with(['answers.question', 'spinResult.prize']);
 
         if ($request->has('search')) {
             $search = $request->input('search');
@@ -347,6 +380,11 @@ class FormController extends Controller
                     'custom_fields' => $respondent->custom_fields ?? [],
                     'submitted_at' => $respondent->submitted_at->format('d M Y H:i'),
                     'answers' => $answers,
+                    // Spin Result
+                    'spin_result_id' => $respondent->spinResult?->id,
+                    'spin_prize' => $respondent->spinResult?->prize?->name,
+                    'spin_phone' => $respondent->spinResult?->phone_number,
+                    'spin_status' => $respondent->spinResult?->status,
                 ];
             });
 
@@ -377,6 +415,7 @@ class FormController extends Controller
                 'name' => $form->name,
                 'slug' => $form->slug,
                 'respondent_fields' => $respondentFields,
+                'spin_wheel_enabled' => $form->spin_wheel_enabled,
             ],
             'event' => [
                 'id' => $form->event->id,
@@ -434,7 +473,7 @@ class FormController extends Controller
         }]);
 
         $respondents = $form->respondents()
-            ->with(['answers.question'])
+            ->with(['answers.question', 'spinResult.prize'])
             ->orderBy('submitted_at', 'desc')
             ->get();
 
@@ -462,6 +501,13 @@ class FormController extends Controller
         $questions = $form->questions;
         foreach ($questions as $question) {
             $headers[] = $question->question_text;
+        }
+
+        // Add spin wheel columns if enabled
+        if ($form->spin_wheel_enabled) {
+            $headers[] = 'Hadiah Spin Wheel';
+            $headers[] = 'No HP Klaim';
+            $headers[] = 'Status Klaim';
         }
 
         // Build rows
@@ -514,6 +560,14 @@ class FormController extends Controller
                 } else {
                     $row[] = $answer->answer_text ?? '-';
                 }
+            }
+
+            // Add spin wheel data
+            if ($form->spin_wheel_enabled) {
+                $row[] = $respondent->spinResult?->prize?->name ?? '-';
+                $row[] = $respondent->spinResult?->phone_number ?? '-';
+                $statusMap = ['won' => 'Menang', 'claimed' => 'Diklaim', 'expired' => 'Kedaluwarsa'];
+                $row[] = $respondent->spinResult ? ($statusMap[$respondent->spinResult->status] ?? $respondent->spinResult->status) : '-';
             }
 
             $rows[] = $row;
@@ -675,5 +729,197 @@ class FormController extends Controller
         return redirect()
             ->route('admin.events.forms', $form->event_id)
             ->with('success', __('Form berhasil diduplikasi.'));
+    }
+
+    /**
+     * Show spin wheel settings page.
+     */
+    public function spinWheelPage(Form $form): Response
+    {
+        $form->load('prizes');
+
+        return Inertia::render('Admin/Forms/SpinWheelSettings', [
+            'form' => [
+                'id' => $form->id,
+                'name' => $form->name,
+                'slug' => $form->slug,
+                'status' => $form->status,
+                'public_url' => url("/form/{$form->slug}"),
+                'spin_wheel_enabled' => $form->spin_wheel_enabled,
+                'spin_wheel_title' => $form->spin_wheel_title,
+                'spin_wheel_btn_text' => $form->spin_wheel_btn_text ?? 'PUTAR!',
+                'spin_wheel_btn_color' => $form->spin_wheel_btn_color ?? '#f17720',
+                'spin_wheel_pointer_color' => $form->spin_wheel_pointer_color ?? '#e74c3c',
+                'spin_wheel_sound_spin' => $form->spin_wheel_sound_spin ? Storage::url($form->spin_wheel_sound_spin) : null,
+                'spin_wheel_sound_bgm' => $form->spin_wheel_sound_bgm ? Storage::url($form->spin_wheel_sound_bgm) : null,
+                'spin_wheel_sound_win' => $form->spin_wheel_sound_win ? Storage::url($form->spin_wheel_sound_win) : null,
+                'spin_wheel_sound_bgm_enabled' => (bool) $form->spin_wheel_sound_bgm_enabled,
+                'spin_wheel_sound_spin_enabled' => (bool) $form->spin_wheel_sound_spin_enabled,
+                'spin_wheel_sound_win_enabled' => (bool) $form->spin_wheel_sound_win_enabled,
+                'spin_wheel_result_message' => $form->spin_wheel_result_message,
+                'prizes' => $form->prizes->map(function ($prize) {
+                    return [
+                        'id' => $prize->id,
+                        'name' => $prize->name,
+                        'name_en' => $prize->name_en,
+                        'image' => $prize->image ? Storage::url($prize->image) : null,
+                        'image_path' => $prize->image,
+                        'color' => $prize->color,
+                        'probability' => (float) $prize->probability,
+                        'stock' => $prize->stock,
+                        'won_count' => $prize->won_count,
+                        'is_active' => $prize->is_active,
+                        'sort_order' => $prize->sort_order,
+                    ];
+                }),
+            ],
+            'event' => [
+                'id' => $form->event->id,
+                'title' => $form->event->title,
+            ],
+        ]);
+    }
+
+    /**
+     * Save spin wheel settings and prizes.
+     */
+    public function saveSpinWheelSettings(Request $request, Form $form): RedirectResponse
+    {
+        $request->validate([
+            'spin_wheel_enabled' => 'boolean',
+            'spin_wheel_title' => 'nullable|string|max:255',
+            'spin_wheel_btn_text' => 'nullable|string|max:50',
+            'spin_wheel_btn_color' => 'nullable|string|max:7',
+            'spin_wheel_pointer_color' => 'nullable|string|max:7',
+            'spin_wheel_result_message' => 'nullable|string',
+            'prizes' => 'nullable|array',
+            'prizes.*.id' => 'nullable|integer',
+            'prizes.*.name' => 'required|string|max:255',
+            'prizes.*.name_en' => 'nullable|string|max:255',
+            'prizes.*.image_path' => 'nullable|string',
+            'prizes.*.color' => 'required|string|max:7',
+            'prizes.*.probability' => 'required|numeric|min:0|max:100',
+            'prizes.*.stock' => 'required|integer|min:0',
+            'prizes.*.is_active' => 'boolean',
+            'prizes.*.sort_order' => 'integer|min:0',
+        ]);
+
+        // Update form spin wheel settings
+        $form->update([
+            'spin_wheel_enabled' => $request->spin_wheel_enabled ?? false,
+            'spin_wheel_title' => $request->spin_wheel_title,
+            'spin_wheel_btn_text' => $request->spin_wheel_btn_text ?? 'PUTAR!',
+            'spin_wheel_btn_color' => $request->spin_wheel_btn_color ?? '#f17720',
+            'spin_wheel_pointer_color' => $request->spin_wheel_pointer_color ?? '#e74c3c',
+            'spin_wheel_result_message' => $request->spin_wheel_result_message,
+            'spin_wheel_sound_bgm_enabled' => $request->spin_wheel_sound_bgm_enabled ?? true,
+            'spin_wheel_sound_spin_enabled' => $request->spin_wheel_sound_spin_enabled ?? true,
+            'spin_wheel_sound_win_enabled' => $request->spin_wheel_sound_win_enabled ?? true,
+        ]);
+
+        // Upsert prizes
+        $incomingIds = [];
+        $prizes = $request->prizes ?? [];
+
+        foreach ($prizes as $index => $prizeData) {
+            $prize = null;
+            if (!empty($prizeData['id'])) {
+                $prize = Prize::where('form_id', $form->id)->find($prizeData['id']);
+            }
+
+            if ($prize) {
+                $prize->update([
+                    'name' => $prizeData['name'],
+                    'name_en' => $prizeData['name_en'] ?? null,
+                    'image' => $prizeData['image_path'] ?? $prize->image,
+                    'color' => $prizeData['color'],
+                    'probability' => $prizeData['probability'],
+                    'stock' => $prizeData['stock'],
+                    'is_active' => $prizeData['is_active'] ?? true,
+                    'sort_order' => $prizeData['sort_order'] ?? $index,
+                ]);
+                $incomingIds[] = $prize->id;
+            } else {
+                $newPrize = Prize::create([
+                    'form_id' => $form->id,
+                    'name' => $prizeData['name'],
+                    'name_en' => $prizeData['name_en'] ?? null,
+                    'image' => $prizeData['image_path'] ?? null,
+                    'color' => $prizeData['color'],
+                    'probability' => $prizeData['probability'],
+                    'stock' => $prizeData['stock'],
+                    'is_active' => $prizeData['is_active'] ?? true,
+                    'sort_order' => $prizeData['sort_order'] ?? $index,
+                ]);
+                $incomingIds[] = $newPrize->id;
+            }
+        }
+
+        // Delete prizes not in the incoming list
+        Prize::where('form_id', $form->id)
+            ->whereNotIn('id', $incomingIds)
+            ->delete();
+
+        return back()->with('success', 'Pengaturan Spin Wheel berhasil disimpan.');
+    }
+
+    /**
+     * Upload prize image.
+     */
+    public function uploadPrizeImage(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|max:2048',
+        ]);
+
+        $path = $request->file('image')->store('prizes', 'public');
+
+        return response()->json([
+            'path' => $path,
+            'url' => Storage::url($path),
+        ]);
+    }
+
+    /**
+     * Upload spin wheel sound (MP3).
+     */
+    public function uploadSpinSound(Request $request)
+    {
+        $request->validate([
+            'sound' => 'required|file|mimes:mp3,wav,ogg|max:5120',
+            'type' => 'required|in:spin,bgm,win',
+            'form_id' => 'required|integer|exists:forms,id',
+        ]);
+
+        $form = Form::findOrFail($request->form_id);
+        $type = $request->type;
+        $fieldName = 'spin_wheel_sound_' . $type;
+
+        // Delete old sound if exists
+        if ($form->$fieldName) {
+            Storage::disk('public')->delete($form->$fieldName);
+        }
+
+        $path = $request->file('sound')->store('spin-sounds', 'public');
+        $form->update([$fieldName => $path]);
+
+        return response()->json([
+            'path' => $path,
+            'url' => Storage::url($path),
+        ]);
+    }
+
+    /**
+     * Update spin result status.
+     */
+    public function updateSpinResultStatus(Request $request, SpinResult $spinResult): RedirectResponse
+    {
+        $request->validate([
+            'status' => 'required|in:won,claimed,expired',
+        ]);
+
+        $spinResult->update(['status' => $request->input('status')]);
+
+        return back();
     }
 }

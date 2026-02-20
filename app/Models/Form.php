@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Str;
 
 class Form extends Model
@@ -34,6 +35,18 @@ class Form extends Model
         'thank_you_button_text',
         'thank_you_button_url',
         'response_limit',
+        'spin_wheel_enabled',
+        'spin_wheel_title',
+        'spin_wheel_btn_text',
+        'spin_wheel_btn_color',
+        'spin_wheel_pointer_color',
+        'spin_wheel_sound_spin',
+        'spin_wheel_sound_bgm',
+        'spin_wheel_sound_win',
+        'spin_wheel_sound_bgm_enabled',
+        'spin_wheel_sound_spin_enabled',
+        'spin_wheel_sound_win_enabled',
+        'spin_wheel_result_message',
     ];
 
     protected $casts = [
@@ -44,6 +57,7 @@ class Form extends Model
         'closes_at' => 'datetime',
         'allow_edit' => 'boolean',
         'response_limit' => 'integer',
+        'spin_wheel_enabled' => 'boolean',
     ];
 
     /**
@@ -82,6 +96,22 @@ class Form extends Model
     public function respondents(): HasMany
     {
         return $this->hasMany(Respondent::class);
+    }
+
+    /**
+     * Get the prizes for the form.
+     */
+    public function prizes(): HasMany
+    {
+        return $this->hasMany(Prize::class)->orderBy('sort_order');
+    }
+
+    /**
+     * Get all spin results through respondents.
+     */
+    public function spinResults(): HasManyThrough
+    {
+        return $this->hasManyThrough(SpinResult::class, Respondent::class);
     }
 
     /**
